@@ -1,0 +1,6 @@
+{
+  "name": "Maxicareer",
+  "description": "Maxicareer provides personalized career guidance, mentorship, skill development, and practical support to help students and aspiring professionals achieve their goals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

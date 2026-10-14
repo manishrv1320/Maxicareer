@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 460" fill="none">
+  <defs>
+    <linearGradient id="studentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#38BDF8" />
+    </linearGradient>
+    <filter id="sDrop" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0F172A" flood-opacity="0.07" />
+    </filter>
+  </defs>
+
+  <rect x="50" y="40" width="440" height="380" rx="28" fill="#F0F9FF" opacity="0.7" />
+  
+  <g transform="translate(80, 70)" filter="url(#sDrop)">
+    <rect width="380" height="320" rx="20" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    
+    <!-- Top badge -->
+    <rect x="24" y="24" width="70" height="70" rx="18" fill="url(#studentGrad)" />
+    <!-- Student graduation icon -->
+    <path d="M59 38L78 48L59 58L40 48L59 38Z" fill="#FFFFFF" />
+    <path d="M47 54V64C47 68 52 71 59 71C66 71 71 68 71 64V54L59 60L47 54Z" fill="#EFF6FF" />
+
+    <text x="110" y="52" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="700" fill="#0F172A">Student &amp; Graduate Success</text>
+    <text x="110" y="74" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="500" fill="#64748B">Structured Growth Milestones</text>
+
+    <line x1="24" y1="112" x2="356" y2="112" stroke="#F1F5F9" stroke-width="1.5" />
+
+    <!-- Progress Milestones -->
+    <g transform="translate(24, 130)">
+      <rect width="332" height="48" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="26" cy="24" r="10" fill="#E0F2FE" />
+      <text x="26" y="28" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="800" fill="#0284C7" text-anchor="middle">1</text>
+      <text x="46" y="29" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="600" fill="#1E293B">Aptitude &amp; Passion Assessment</text>
+    </g>
+
+    <g transform="translate(24, 190)">
+      <rect width="332" height="48" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="26" cy="24" r="10" fill="#E0F2FE" />
+      <text x="26" y="28" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="800" fill="#0284C7" text-anchor="middle">2</text>
+      <text x="46" y="29" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="600" fill="#1E293B">Industry Project Development</text>
+    </g>
+
+    <g transform="translate(24, 250)">
+      <rect width="332" height="48" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="26" cy="24" r="10" fill="#E0F2FE" />
+      <text x="26" y="28" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="800" fill="#0284C7" text-anchor="middle">3</text>
+      <text x="46" y="29" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="600" fill="#1E293B">Job Readiness &amp; Confident Placement</text>
+    </g>
+  </g>
+</svg>

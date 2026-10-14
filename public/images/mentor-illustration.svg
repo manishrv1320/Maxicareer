@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 460" fill="none">
+  <defs>
+    <linearGradient id="mentorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#38BDF8" />
+    </linearGradient>
+    <filter id="mDrop" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0F172A" flood-opacity="0.07" />
+    </filter>
+  </defs>
+
+  <!-- Background decorative elements -->
+  <rect x="50" y="40" width="440" height="380" rx="28" fill="#EFF6FF" opacity="0.6" />
+  <circle cx="430" cy="110" r="60" fill="#38BDF8" opacity="0.15" />
+  <circle cx="110" cy="350" r="70" fill="#2563EB" opacity="0.1" />
+
+  <!-- Main Card -->
+  <g transform="translate(80, 70)" filter="url(#mDrop)">
+    <rect width="380" height="320" rx="20" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    
+    <!-- Header with Mentor Profile badge -->
+    <rect x="24" y="24" width="70" height="70" rx="18" fill="url(#mentorGrad)" />
+    <!-- Mentor avatar icon -->
+    <circle cx="59" cy="52" r="14" fill="#FFFFFF" />
+    <path d="M43 78C43 70 50 67 59 67C68 67 75 70 75 78" fill="#EFF6FF" />
+
+    <text x="110" y="52" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="700" fill="#0F172A">Senior Mentor Guidance</text>
+    <text x="110" y="74" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="500" fill="#64748B">Tech &amp; Career Leadership</text>
+
+    <line x1="24" y1="112" x2="356" y2="112" stroke="#F1F5F9" stroke-width="1.5" />
+
+    <!-- Mentorship Pillars -->
+    <!-- Pillar 1 -->
+    <g transform="translate(24, 130)">
+      <rect width="332" height="48" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="26" cy="24" r="10" fill="#EFF6FF" />
+      <path d="M22 24L25 27L30 21" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="46" y="29" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="600" fill="#1E293B">Custom Roadmap Formulation</text>
+    </g>
+
+    <!-- Pillar 2 -->
+    <g transform="translate(24, 190)">
+      <rect width="332" height="48" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="26" cy="24" r="10" fill="#EFF6FF" />
+      <path d="M22 24L25 27L30 21" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="46" y="29" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="600" fill="#1E293B">Industry Resume &amp; Portfolio Review</text>
+    </g>
+
+    <!-- Pillar 3 -->
+    <g transform="translate(24, 250)">
+      <rect width="332" height="48" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="26" cy="24" r="10" fill="#EFF6FF" />
+      <path d="M22 24L25 27L30 21" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="46" y="29" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="600" fill="#1E293B">Technical &amp; Behavioral Mock Interviews</text>
+    </g>
+  </g>
+</svg>

@@ -1,200 +1,271 @@
-# MaxiCareer — Career Guidance & Mentorship Platform
+<div align="center">
 
-> **"Your Career Journey Starts with the Right Guidance."**
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/images/maxicareer-logo-white.png" />
+  <img src="public/images/maxicareer-logo.png" alt="Maxicareer" width="320" />
+</picture>
 
-MaxiCareer is a career guidance and mentorship landing website designed for students and aspiring professionals seeking structured roadmaps, skill development, 1-on-1 mentorship, and dedicated career placement support.
+### Your career journey starts with the right guidance.
 
----
+One platform for **students**, **counsellors**, **mentors** and the **Maxicareer team**:<br />
+career roadmaps, 1-on-1 sessions, assignments, tests, payments and the public website, all in one place.
 
-## 🚀 Live Preview & Quick Start
+<br />
 
-### 1. Installation
-```bash
-npm install
-cp .env.example .env.local   # then set MONGODB_URI, ADMIN_EMAIL, ADMIN_PASSWORD, AZURE_STORAGE_CONNECTION_STRING
-```
+![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white)
+![Azure](https://img.shields.io/badge/Azure-Blob_Storage-0078D4?logo=microsoftazure&logoColor=white)
 
-### 2. Run Development Server
-```bash
-npm run dev
-```
-The application will launch on `http://localhost:3000`.
+[Features](#-features) · [How it works](#-how-it-fits-together) · [Quick start](#-quick-start) · [Configuration](#%EF%B8%8F-configuration) · [Deployment](#-deployment)
 
-### 3. Production Build
-```bash
-npm run build
-```
+</div>
 
 ---
 
-## 📁 Project Structure
+## ✨ Features
 
-```text
-/
-├── .env.example                # Documented environment variables
-├── index.html                  # HTML entry point, SEO metadata & Google Fonts
-├── metadata.json               # Applet metadata configuration
-├── package.json                # Dependencies and npm scripts
-├── tsconfig.json               # TypeScript configuration
-├── vite.config.ts              # Vite configuration with /api/contact handler
-├── public/
-│   └── images/
-│       ├── maxicareer-logo.png # Official brand logo (transparent PNG)
-│       ├── maxicareer-logo.svg # Scalable vector brand logo
-│       ├── maxicareer-icon.svg # Brand icon badge & favicon
-│       ├── hero-illustration.svg # Hero roadmap vector visual
-│       ├── mentor-illustration.svg # Mentorship collaborative visual
-│       └── student-illustration.svg # Student milestone visual
-└── src/
-    ├── App.tsx                 # Main application landing page orchestrator
-    ├── index.css               # Tailwind CSS, theme colors, reduced-motion rules
-    ├── main.tsx                # React DOM root entry
-    ├── components/
-    │   ├── AnimatedBackground.tsx # Subtle floating ambient light blobs
-    │   ├── Navbar.tsx             # Sticky responsive navigation & mobile menu
-    │   ├── Hero.tsx               # Hero banner with trust pills and CTAs
-    │   ├── AboutSection.tsx       # About MaxiCareer and 3 core pillar cards
-    │   ├── ServicesSection.tsx    # 4 core services with interactive modal details
-    │   ├── ServiceDetailModal.tsx # Full curriculum & deliverables detail modal
-    │   ├── WhyChooseUs.tsx        # 2-column layout with 6 core advantages
-    │   ├── HowItWorks.tsx         # 3-step numbered roadmap timeline
-    │   ├── BenefitsSection.tsx    # 6 tangible outcome benefit cards
-    │   ├── Testimonials.tsx       # Student feedback cards (sample demo labeled)
-    │   ├── CTASection.tsx         # High-contrast action banner
-    │   ├── ContactSection.tsx     # Validated consultation form & API integration
-    │   ├── Footer.tsx             # Brand footer, privacy & terms modals
-    │   ├── ScrollToTop.tsx        # Floating return-to-top button
-    │   └── SectionHeading.tsx     # Reusable typography heading component
-    ├── lib/
-    │   ├── utils.ts               # Smooth scroll and helper utilities
-    │   └── validations.ts         # Zod schema definitions for form inputs
-    └── types/
-        └── index.ts               # Shared TypeScript interfaces and types
-```
+<table>
+<tr>
+<td width="33%" valign="top">
 
----
+### 🎓 Students
+- Personal dashboard with an assigned **mentor** and **counsellor**
+- Curriculum, tasks and file submissions
+- Timed online tests and certificates
+- Book **1-on-1 sessions** and join with one click
+- Calendar, chat and events
+- Profile, resume, invoices and renewals
 
-## 🎨 Color Palette
+</td>
+<td width="33%" valign="top">
 
-- **Deep Navy:** `#0F172A`
-- **Professional Blue:** `#2563EB`
-- **Sky Blue:** `#38BDF8`
-- **Light Blue:** `#EFF6FF`
-- **White:** `#FFFFFF`
-- **Soft Background:** `#F8FAFC`
-- **Dark Text:** `#1E293B`
+### 🧭 Counsellors & mentors
+- Mentee list with progress and work
+- Accept bookings and set **availability**
+- Their own **meeting link** (Meet, Zoom, Teams)
+- Session notes, follow-ups and grading
+- Work hours, expense claims, payouts
+- Reports on their students
 
----
+</td>
+<td width="33%" valign="top">
 
-## ⚙️ Environment Variables
+### 🛠️ Maxicareer team
+- Students with **mentor and counsellor** assignment and filters
+- Approvals, applications, roadmaps
+- Assessments, curriculum, events
+- Payments, payouts, expenditure
+- Website CMS and careers page
+- Staff roles, page access, audit log
 
-Copy `.env.example` to `.env.local` and fill it in. The full list with comments is in `.env.example`.
+</td>
+</tr>
+</table>
 
-| Variable | Required | Purpose |
+**Also included:** one sign-in page for every role · email-code sign-in for students · **forgot password** by email · private file storage · in-app notifications · CSV import and export · sample data you can load and clear.
+
+| URL | For | What's there |
 | --- | --- | --- |
-| `MONGODB_URI` | Yes | MongoDB connection string (Atlas `mongodb+srv://…` works). |
-| `MONGODB_DB_NAME` | No | Database name. Default `maxicareer`. |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | First run | Creates the first administrator if the database has none. Changing them later does nothing; change passwords from the app instead. |
-| `AZURE_STORAGE_CONNECTION_STRING` | For uploads | Azure Storage account connection string. Without it, uploads return "File storage is not configured". |
-| `AZURE_STORAGE_CONTAINER` | No | Blob container name. Default `maxicareer-uploads`; created automatically as **private**. |
-| `RESEND_API_KEY`, `MAIL_FROM`, `CONTACT_EMAIL` | No | Email sign-in codes and enquiry alerts through [Resend](https://resend.com). Without a key, emails are logged to the server console. |
-| `ENABLE_DEMO_LOGIN` | No | Set `false` to disable one-click sample student sign-in. |
+| `/` | Everyone | Public website, and the student portal once signed in |
+| `/login` · `/signup` | Everyone | One sign-in for all roles; each person lands on their own dashboard |
+| `/portal` | Counsellors & mentors | Their workspace (sign-ups wait for admin approval) |
+| `/admin` | Staff | Admin portal; pages shown depend on the staff role |
+| `/careers` | Everyone | Job and internship openings published from the admin portal |
 
-## 🔌 Backend: MongoDB + Azure Blob
-
-Every dashboard reads and writes the same MongoDB database through the Next.js API routes in `app/api`. Nothing shared is kept in the browser any more.
-
-| URL | Who | What |
-| --- | --- | --- |
-| `/login`, `/signup` | Everyone | One sign-in and sign-up page for every role. After signing in, students go to the student portal, counsellors and mentors to `/portal`, staff to `/admin`. Signed-out visits to any dashboard come here. While sample data is loaded it lists the sample accounts. |
-| `/` | Students | Public site and the student portal (vertical menu, see below). |
-| `/portal` | Counsellors & mentors | Sign-up (pending until an admin approves), sign-in, and their workspace (vertical menu). |
-| `/careers` | Everyone | Job and internship openings published from the admin **Career page**. |
-| `/admin` | Staff | Admin portal. Pages shown depend on the staff role (set in **Page access**). |
-
-**How the dashboards connect**
-
-- A student books a counsellor or mentor → it appears in that counsellor's **Requests** and in the admin **Sessions** page; accepting it creates an appointment with a [Jitsi](https://meet.jit.si) video link and notifies the student.
-- Counsellors' session notes, tasks and recommendations show up on the student's dashboard; students can tick off tasks and reply in **Messages** (with file attachments).
-- Admin actions flow out: assigning a mentor or confirming enrolment notifies the student and adds them to that counsellor's caseload; personal roadmaps built in **Roadmaps** appear on the student dashboard; broadcasts from **Notifications** land in student/staff inboxes.
-- Counsellor and mentor sign-ups create an item in **Approvals** and **Counsellors**; approving it unlocks their login and lists them in the public directory.
-- **User management** creates real staff logins with one-time passwords (hashed; staff must change them on first sign-in). Counsellor/Mentor staff accounts also get a `/portal` workspace.
-
-**Files (Azure Blob Storage)** are uploaded through `POST /api/files` and served through `GET /api/files/:id`, which checks access and redirects to a 10-minute SAS link. Profile photos and website images are public; chat attachments are visible only to the sender, the recipient and staff.
-
-**Auth** uses scrypt-hashed passwords and an httpOnly session cookie (`mc_session`, 14 days, stored in `auth_sessions`). The cookie is `Secure` in production, so serve the site over **HTTPS**. Login is rate-limited per IP and per account (in memory, so per server instance).
-
-**Sample data**: an admin can load and remove clearly-marked sample records from **Settings → Sample data** (or the bar at the top of `/portal`). Clearing removes only sample records. Sample accounts use `password123`; sample staff use `admin@maxicareer.com` / `admin123` and `mentor@maxicareer.com` / `mentor123`. Don't leave sample data loaded on a public site.
-
-**Moving from the old browser-only version**: data an earlier version saved in an admin's browser (applications, roadmaps, sessions, audit log, website drafts…) can be imported from **Settings → Data saved in this browser**.
-
-### Dashboards
-
-The student portal and the counsellor/mentor workspace use the same collapsible vertical sidebar as the admin portal (`src/components/workspace/WorkspaceShell.tsx`), with a page finder (Ctrl K), notifications and the account menu.
-
-**Student portal** (`src/components/StudentDashboard.tsx`, pages in `src/components/student/`)
+<details>
+<summary><b>Student portal: all pages</b></summary>
 
 | Group | Pages |
 | --- | --- |
-| Overview | **Dashboard**: assigned mentor and counsellor, my program, progress, book a meeting (mentor, counsellor or the admin team), Your Personal Plan, up next · **Notifications** |
-| Learning | **Curriculum & syllabus** (modules from the admin and from the student's mentor/counsellor) · **Tasks & assignments** (tasks plus file/link uploads, grades and feedback) · **Courses & tests** (timed tests marked on the server) · **Resources** · **Milestones & certificates** (badges, printable certificates) |
-| Guidance | **1-on-1 sessions** (upcoming, history with notes, proctoring summary per mentor/counsellor/admin) · **Calendar** (sessions, due dates, tests, targets, events, invoices, plus the student's own notes/reminders/targets) · **Chat** · **Upcoming events** |
-| Career & account | **Profile & resume** (headline, skills, LinkedIn/GitHub/portfolio, resume shared with the mentor and counsellor) · **Add a service** · **Invoices** (“I have paid” with the transaction reference) · **Renewal** |
+| Overview | **Dashboard** (mentor, counsellor, program, progress, book a meeting, personal plan) · **Notifications** |
+| Learning | **Curriculum & syllabus** · **Tasks & assignments** (uploads, grades, feedback) · **Courses & tests** (timed, marked on the server) · **Resources** · **Milestones & certificates** |
+| Guidance | **1-on-1 sessions** (Join button once the link is shared, history with notes) · **Calendar** · **Chat** · **Upcoming events** |
+| Career & account | **Profile & resume** · **Add a service** · **Invoices** · **Renewal** |
 | Help | **Support** · **Feedback** · **Tutorials** |
 
-Recommendations are no longer shown to students.
+</details>
 
-**Counsellor / mentor workspace** (`/portal`, pages in `src/components/provider/`): Dashboard, Notifications, Calendar (with personal notes, reminders, to-dos and days off), My mentees (tasks, submissions, tests, add a personal syllabus module, share a resource), 1-on-1 sessions (requests, upcoming, completed with notes), Appointment availability (days, time slots, session length, days off), Pending tasks, Session notes, Projects & assignments (review and grade), Follow-ups, Chat, Report analysis, Work hours (completed sessions counted automatically plus a manual log, CSV export), Payment history, Expenditure (claims with receipts), Profile and Support.
+<details>
+<summary><b>Counsellor & mentor workspace: all pages</b></summary>
 
-**Admin additions**: *Learning* — Curriculum & resources (syllabus modules per cohort, resource library with uploads), Assessments (multiple-choice test builder, results with “allow retake”, certificates), Events. *Operations* — Feedback; Sessions has a “Student requests” tab for meetings students book with the admin team. *Finance* — Payments (invoices, payment verification, payouts, renewal pricing and payment instructions) and Expenditure (company expenses, provider claims, work-hours summary). *Website* — Career page (openings shown at `/careers`). The student drawer has a Counsellor assignment next to Mentor.
+Dashboard · Notifications · Calendar · My mentees · **1-on-1 sessions** (requests, upcoming, notes, add or change the meeting link) · **Appointment availability** (days, time slots, session length, days off, personal meeting link) · Pending tasks · Session notes · Projects & assignments · Follow-ups · Chat · Report analysis · Work hours · Payment history · Expenditure · Profile · Support
 
-**How the new pieces connect**
+</details>
 
-- Admins assign each student a **mentor** and a **counsellor**; both see the student, can message them and review their work.
-- A student's submission goes to the task's author (or their mentor); the review, grade and feedback come back as a notification.
-- Buying a service or requesting a renewal creates an **invoice**. When an admin marks it **Paid** in Payments, a service is added to the student's add-ons and a renewal extends `programEndsAt` (program access defaults to one year from registration).
-- Tests are created in the admin **Assessments** page; students never receive the answer key and results land in the `assessments` collection, visible to their mentor and counsellor. Deleting a result gives the student another attempt.
-- Counsellors and mentors set their **availability** (days, time slots, days off); student booking only offers those days.
-- Counsellors and mentors log **work hours** and **expense claims**; admins approve claims in **Expenditure** and record **payouts**, which show in the provider's **Payment history**.
-- Student meeting requests with the admin team appear in the admin **Sessions** page; confirming, moving or cancelling them notifies the student.
+<details>
+<summary><b>Admin portal: all pages</b></summary>
 
-### MongoDB collections
+| Area | Pages |
+| --- | --- |
+| People | **Students** (assign mentor and counsellor inline; filter by cohort, status, mentor, counsellor, program and registration date) · Counsellors · Approvals · User management · Page access |
+| Programs | Applications · Roadmaps · Programs & plans · Services · Curriculum & resources · Assessments · Events |
+| Operations | **Sessions** (schedule, confirm student requests, paste meeting links) · Feedback · Form submissions · Reports |
+| Finance | Payments (invoices, verification, payouts, renewals) · Expenditure |
+| Website | Homepage · Navigation · Calls to action · Contact page · Career page · Footer · Social links · SEO · Article covers |
+| System | Notifications · Audit log · Settings (database and storage health, sample data) |
 
-`users`, `auth_sessions`, `otp_codes`, `students`, `counselors`, `mentors`, `counseling_requests`, `appointments`, `session_notes`, `recommendations`, `follow_up_tasks`, `messages`, `assessments`, `user_notifications`, `support_tickets`, `files`, `settings`, plus admin data: `admin_notifications`, `audit_logs`, `applications`, `roadmap_templates`, `student_roadmaps`, `approvals`, `mentoring_sessions`, `managed_users`, `services`, `broadcasts`, and for the portal features: `assignments`, `calendar_notes`, `invoices`, `payouts`, `expenses`, `work_logs`, `feedback`, `events`, `tests`, `certificates`, `careers`, `curricula`, `resources`. Indexes are created automatically on first connection. Server actions for these live in `lib/server/portal.ts`; admin edits go through `/api/admin/data/<key>` (`invoices`, `payouts`, `expenses`, `worklogs` (read-only), `curricula`, `resources`, `tests`, `results`, `certificates`, `events`, `feedback`, `careers`).
+</details>
 
 ---
 
-## 🚢 Deployment Instructions
+## 🔗 How it fits together
 
-### GitHub Repository
-```bash
-git init
-git add .
-git commit -m "feat: Initial commit of MaxiCareer website"
-git branch -M main
-git remote add origin https://github.com/<your-username>/maxicareer.git
-git push -u origin main
+```mermaid
+flowchart LR
+  subgraph Browser
+    W["Public website<br/>/ · /careers · /login"]
+    S["Student portal"]
+    P["Counsellor & mentor<br/>workspace · /portal"]
+    A["Admin portal · /admin"]
+  end
+  subgraph Server["Next.js server"]
+    API["API routes<br/>app/api/*"]
+    LIB["Business logic<br/>lib/server/*"]
+  end
+  W & S & P & A --> API --> LIB
+  LIB --> DB[("MongoDB Atlas<br/>all records")]
+  LIB --> BLOB[("Azure Blob Storage<br/>uploaded files")]
+  LIB --> MAIL["Resend<br/>email"]
 ```
 
-### Vercel Deployment
-1. Connect your GitHub account at [Vercel](https://vercel.com).
-2. Click **New Project** and import `maxicareer`.
-3. Framework Preset: Next.js (the API routes need a Node.js server; a static Vite export has no backend).
-4. Add the environment variables from `.env.example` in the project settings.
-5. Click **Deploy**. On Azure App Service or any Node host, run `npm run build` then `npm start`.
+Every dashboard reads and writes the same database through the API, so a change in one place shows up everywhere:
+
+- **Booking:** a student books a counsellor → it appears in the counsellor's requests and the admin **Sessions** page → accepting it creates the session with the counsellor's **personal meeting link** and notifies the student. Links can also be pasted per session, and the student is notified each time.
+- **Assignment:** an admin assigns a **mentor** and a **counsellor** → the student appears in both workspaces, and the student and the counsellor or mentor are each notified.
+- **Learning:** submissions go to the task's author for review; grades and feedback come back as notifications. Test answer keys never leave the server.
+- **Money:** buying a service or a renewal creates an **invoice**; marking it paid adds the service or extends the program. Counsellors log hours and claims; admins record **payouts**.
+- **Approvals:** counsellor and mentor sign-ups wait in **Approvals**; approving one unlocks the login and lists them in the student directory.
 
 ---
 
-## ✨ Implemented Features
+## 🚀 Quick start
 
-1. **Sticky Header & Mobile Drawer:** Transparent-to-glassmorphism transitions, animated hamburger drawer, active section highlights.
-2. **Official Logo Integration:** Standardized at `public/images/maxicareer-logo.png` with auto-fallback to SVG vector.
-3. **Interactive Hero Section:** Clear value proposition, trust pill indicators, direct action buttons.
-4. **Interactive Services & Detail Modals:** 4 comprehensive service cards with roadmap exploration modals and direct booking triggers.
-5. **Timeline Stepper:** 3-step progressive numbered guide with connected timeline accents.
-6. **Robust Consultation Form:** Built with Zod validation, required field checks, email format validation, loading state, error alerts, and success confirmations.
-7. **Production API Route:** `POST /api/contact` handling with mock log simulation and production email webhook readiness.
-8. **Accessibility & Reduced Motion:** Full `prefers-reduced-motion` compliance, keyboard-friendly focus rings, ARIA labels, semantic markup.
-9. **Zero Dead Links:** Every button and anchor scrolls or opens its corresponding section or modal.
-#   M a x i c a r e e r  
- 
+**You need:** Node.js 20 or newer, and a MongoDB database. A free [MongoDB Atlas](https://www.mongodb.com/atlas) cluster works. Azure Blob Storage and Resend are optional to start.
+
+```bash
+git clone https://github.com/manishrv1320/Maxicareer.git
+cd Maxicareer
+npm install
+cp .env.example .env.local     # then fill in the values below
+npm run dev
+```
+
+Open **http://localhost:3000/login** and sign in with the `ADMIN_EMAIL` and `ADMIN_PASSWORD` you set. That administrator is created automatically the first time the app connects to an empty database.
+
+> [!TIP]
+> Using MongoDB Atlas? Add your computer's IP address under **Security → Network Access** in Atlas. Otherwise the connection fails with a `tlsv1 alert internal error`.
+
+---
+
+## ⚙️ Configuration
+
+All settings live in `.env.local` (never committed). [`.env.example`](.env.example) lists them with comments.
+
+| Variable | Needed | What it does |
+| --- | --- | --- |
+| `MONGODB_URI` | **Yes** | MongoDB connection string (`mongodb+srv://…` from Atlas, or `mongodb://127.0.0.1:27017` locally) |
+| `MONGODB_DB_NAME` | No | Database name. Default `maxicareer` |
+| `ADMIN_EMAIL` · `ADMIN_PASSWORD` · `ADMIN_NAME` | First run | Creates the first administrator when the database has none |
+| `AZURE_STORAGE_CONNECTION_STRING` | For uploads | Azure Storage account → *Access keys* → *Connection string* |
+| `AZURE_STORAGE_CONTAINER` | No | Default `maxicareer-uploads`. Created automatically and kept **private** |
+| `RESEND_API_KEY` | For email | [Resend](https://resend.com) key for sign-in codes, password resets and enquiry alerts. Without it, emails are only printed to the server console |
+| `SUPPORT_MAIL_FROM` | No | Sender of password-reset emails. Default `Maxicareer Support <support@maxicareer.com>`. The domain must be verified in Resend |
+| `MAIL_FROM` · `CONTACT_EMAIL` | No | Sender of other emails, and the inbox for contact-form enquiries |
+| `APP_URL` | In production | Public address used in email links, e.g. `https://maxicareer.com` |
+| `ENABLE_DEMO_LOGIN` | No | `false` turns off sample-account sign-in completely |
+
+### Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Development server on port 3000, reachable from your network |
+| `npm run build` | Production build (Next.js standalone server, plus a static marketing bundle in `dist/`) |
+| `npm start` | Runs the production build |
+| `npm run lint` | Type-checks the whole project |
+
+---
+
+## 🗄️ Where data lives
+
+| Platform | Stores |
+| --- | --- |
+| **MongoDB Atlas** | Every record: accounts (passwords are scrypt-hashed), students, counsellors, mentors, sessions, messages, notes, assignments, tests, invoices, payouts, notifications, website content, settings, and the index of uploaded files |
+| **Azure Blob Storage** | The uploaded files, grouped by type and month: `avatar/`, `website/`, `attachment/`, `document/`, `resource/` → `2026/10/file-…-name.pdf` |
+| **Resend** | Nothing stored; it only sends email |
+| **The visitor's browser** | Only the sign-in cookie and small preferences such as the last open tab |
+
+<details>
+<summary><b>MongoDB collections</b></summary>
+
+`users`, `auth_sessions`, `otp_codes`, `password_resets`, `students`, `counselors`, `mentors`, `counseling_requests`, `appointments`, `session_notes`, `recommendations`, `follow_up_tasks`, `messages`, `assessments`, `user_notifications`, `support_tickets`, `files`, `settings`, `form_submissions`, `admin_notifications`, `audit_logs`, `applications`, `roadmap_templates`, `student_roadmaps`, `approvals`, `mentoring_sessions`, `managed_users`, `services`, `broadcasts`, `assignments`, `calendar_notes`, `invoices`, `payouts`, `expenses`, `work_logs`, `feedback`, `events`, `tests`, `certificates`, `careers`, `curricula`, `resources`.
+
+Indexes, including automatic expiry of sessions, codes and reset links, are created on first connection.
+
+</details>
+
+---
+
+## 📁 Project structure
+
+```text
+Maxicareer/
+├── app/                      Next.js App Router
+│   ├── api/                  REST API: auth, platform actions, students, files, admin data…
+│   ├── admin/ · portal/      Admin portal and counsellor/mentor workspace
+│   ├── login/ · signup/      Shared sign-in, sign-up and password reset
+│   └── careers/ · page.tsx   Public pages
+├── lib/server/               Server logic: database, auth, storage, mail, platform rules
+├── src/
+│   ├── components/
+│   │   ├── admin/            Admin portal pages and UI kit
+│   │   ├── provider/         Counsellor & mentor workspace
+│   │   ├── student/          Student portal pages
+│   │   ├── workspace/        Shared sidebar shell, calendar and helpers
+│   │   └── auth/             Sign-in, sign-up, forgot password
+│   ├── services/ · hooks/    Client data store shared by the dashboards
+│   └── types/ · data/        Shared types and default content
+├── public/images/            Logos and illustrations
+└── scripts/                  Dev and build runners
+```
+
+---
+
+## 🔒 Security
+
+- Passwords are hashed with **scrypt**. Sessions use an **httpOnly** cookie (secure in production) that lasts 14 days.
+- Sign-in, codes, uploads and password resets are **rate-limited**, and accounts lock briefly after repeated wrong passwords.
+- **Forgot password** sends a one-time link that expires after 30 minutes. Only its hash is stored, and using it signs the account out on every other device.
+- Uploaded files stay in a **private** container. The app checks who is asking, then hands out a signed link that lasts 10 minutes.
+- Meeting links must be real `https://` addresses. A counsellor's personal room link is never shown to other students.
+
+> [!WARNING]
+> **Sample data is for demos only.** Admins can load clearly marked sample records from **Settings → Sample data**. The sample accounts use publicly known passwords (`password123`, and `admin123` for the sample admin), and the sign-in page lists them while sample data is loaded. **Clear sample data and set `ENABLE_DEMO_LOGIN=false` before going live.**
+
+---
+
+## 🌐 Deployment
+
+The app needs a Node.js server for its API, so deploy it as a full Next.js app, not a static export.
+
+**Vercel:** import the repository, keep the *Next.js* preset, add the variables from `.env.example`, and deploy.
+**Any Node host** (Azure App Service, a VPS…): run `npm ci && npm run build && npm start`. It listens on `PORT` (default 3000).
+
+**Go-live checklist**
+
+- [ ] `APP_URL` is set to your public address
+- [ ] Your domain is verified in Resend and `RESEND_API_KEY` is set, so password resets and sign-in codes are emailed
+- [ ] MongoDB Atlas **Network Access** allows your host. Most cloud hosts don't have fixed IPs, so this may mean `0.0.0.0/0` with a strong database password
+- [ ] Sample data is cleared and `ENABLE_DEMO_LOGIN=false`
+- [ ] The site is served over **HTTPS**
+
+---
+
+<div align="center">
+
+**Maxicareer**: career guidance, mentorship and placement support.<br />
+<sub>contact@maxicareer.com</sub>
+
+</div>
