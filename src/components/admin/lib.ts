@@ -323,10 +323,20 @@ export function daysUntil(iso?: string) {
 /* CSV                                                                 */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Text starting with = + - @ (or a tab/return) runs as a formula when the file is opened in
+ * Excel or Sheets, so a student could plant one in their name. Such cells get a leading
+ * apostrophe (shown as plain text); parseCsv strips it again on import. Numbers are left alone.
+ */
+const FORMULA_START = /^[=+\-@\t\r]/;
+
 const escapeCell = (v: unknown) => {
   if (v === undefined || v === null) return '""';
-  return `"${String(v).replace(/"/g, '""')}"`;
+  const s = typeof v === 'string' && FORMULA_START.test(v) ? `'${v}` : String(v);
+  return `"${s.replace(/"/g, '""')}"`;
 };
+
+const unescapeCell = (s: string) => (s.length > 1 && s[0] === "'" && FORMULA_START.test(s.slice(1)) ? s.slice(1) : s);
 
 export function toCsv(headers: string[], rows: unknown[][]) {
   return '﻿' + [headers.map(escapeCell).join(','), ...rows.map((r) => r.map(escapeCell).join(','))].join('\r\n');
@@ -376,7 +386,7 @@ export function parseCsv(text: string): string[][] {
     row.push(cell);
     rows.push(row);
   }
-  return rows.filter((r) => r.some((c) => c.trim() !== ''));
+  return rows.filter((r) => r.some((c) => c.trim() !== '')).map((r) => r.map(unescapeCell));
 }
 
 /** Parse CSV into objects keyed by normalised header (lowercase, non-alphanumerics → _). */

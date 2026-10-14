@@ -1,9 +1,10 @@
 import type { Sort, AnyBulkWriteOperation } from 'mongodb';
 import { getDb, COLLECTIONS, newId, nowIso } from './db';
-import { HttpError, UserDoc, isAdmin, canEditWebsite, hashPassword, destroyAllSessionsFor, normaliseEmail, isValidEmail, type StaffRole } from './auth';
+import { HttpError, UserDoc, isAdmin, canEditWebsite, canSeeStudentData, hashPassword, destroyAllSessionsFor, normaliseEmail, isValidEmail, type StaffRole } from './auth';
 import { setProviderApproval, deliverBroadcast } from './platform';
 import { applyPaidInvoice } from './portal';
 import { notifyUser } from './notify';
+import { assertProviderNameFree } from './viewer';
 import { str, meetingUrl } from './http';
 
 /**
@@ -16,36 +17,43 @@ interface CollectionConfig {
   limit?: number;
   /** Keep the order items were arranged in (stored as `_order`). */
   ordered?: boolean;
-  /** Who may write (everyone with staff access may read). */
+  /**
+   * Who may read. Others get an empty list (not an error) so their pages still load.
+   * Default: every staff member.
+   */
+  read?: (u: UserDoc) => boolean;
+  /** Who may write. Default: whoever may read. */
   write?: (u: UserDoc) => boolean;
 }
 
 export const ADMIN_COLLECTIONS: Record<string, CollectionConfig> = {
   notifications: { name: COLLECTIONS.adminNotifications, sort: { createdAt: -1 }, limit: 300 },
-  submissions: { name: COLLECTIONS.formSubmissions, sort: { createdAt: -1 }, limit: 3000, write: isAdmin },
-  audit: { name: COLLECTIONS.auditLogs, sort: { at: -1 }, limit: 5000 },
-  applications: { name: COLLECTIONS.applications, sort: { updatedAt: -1 } },
+  // Contact details people typed into forms, the audit trail and staff accounts: admins only.
+  submissions: { name: COLLECTIONS.formSubmissions, sort: { createdAt: -1 }, limit: 3000, read: isAdmin },
+  audit: { name: COLLECTIONS.auditLogs, sort: { at: -1 }, limit: 5000, read: isAdmin },
+  applications: { name: COLLECTIONS.applications, sort: { updatedAt: -1 }, read: canSeeStudentData },
   templates: { name: COLLECTIONS.roadmapTemplates, sort: { _order: 1 }, ordered: true },
-  roadmaps: { name: COLLECTIONS.studentRoadmaps, sort: { updatedAt: -1 } },
-  approvals: { name: COLLECTIONS.approvals, sort: { createdAt: -1 } },
-  sessions: { name: COLLECTIONS.mentoringSessions, sort: { date: 1, time: 1 } },
-  users: { name: COLLECTIONS.managedUsers, sort: { createdAt: -1 }, write: isAdmin },
+  roadmaps: { name: COLLECTIONS.studentRoadmaps, sort: { updatedAt: -1 }, read: canSeeStudentData },
+  // Approving a sign-up unlocks a login, so only admins can.
+  approvals: { name: COLLECTIONS.approvals, sort: { createdAt: -1 }, read: isAdmin },
+  sessions: { name: COLLECTIONS.mentoringSessions, sort: { date: 1, time: 1 }, read: canSeeStudentData },
+  users: { name: COLLECTIONS.managedUsers, sort: { createdAt: -1 }, read: isAdmin },
   services: { name: COLLECTIONS.services, sort: { _order: 1 }, ordered: true },
   broadcasts: { name: COLLECTIONS.broadcasts, sort: { createdAt: -1 } },
   // Finance
-  invoices: { name: COLLECTIONS.invoices, sort: { issuedAt: -1 }, write: isAdmin },
-  payouts: { name: COLLECTIONS.payouts, sort: { createdAt: -1 }, write: isAdmin },
-  expenses: { name: COLLECTIONS.expenses, sort: { date: -1 }, write: isAdmin },
-  worklogs: { name: COLLECTIONS.workLogs, sort: { date: -1 }, limit: 3000, write: () => false },
+  invoices: { name: COLLECTIONS.invoices, sort: { issuedAt: -1 }, read: isAdmin },
+  payouts: { name: COLLECTIONS.payouts, sort: { createdAt: -1 }, read: isAdmin },
+  expenses: { name: COLLECTIONS.expenses, sort: { date: -1 }, read: isAdmin },
+  worklogs: { name: COLLECTIONS.workLogs, sort: { date: -1 }, limit: 3000, read: isAdmin, write: () => false },
   // Learning
   curricula: { name: COLLECTIONS.curricula, sort: { order: 1 } },
   resources: { name: COLLECTIONS.resources, sort: { createdAt: -1 } },
   tests: { name: COLLECTIONS.tests, sort: { createdAt: -1 }, write: isAdmin },
-  results: { name: COLLECTIONS.assessments, sort: { submittedAt: -1 }, write: isAdmin },
-  certificates: { name: COLLECTIONS.certificates, sort: { issuedOn: -1 }, write: isAdmin },
+  results: { name: COLLECTIONS.assessments, sort: { submittedAt: -1 }, read: canSeeStudentData, write: isAdmin },
+  certificates: { name: COLLECTIONS.certificates, sort: { issuedOn: -1 }, read: canSeeStudentData, write: isAdmin },
   // Operations & website
   events: { name: COLLECTIONS.events, sort: { date: 1 } },
-  feedback: { name: COLLECTIONS.feedback, sort: { createdAt: -1 }, write: isAdmin },
+  feedback: { name: COLLECTIONS.feedback, sort: { createdAt: -1 }, read: canSeeStudentData, write: isAdmin },
   careers: { name: COLLECTIONS.careers, sort: { updatedAt: -1 }, write: canEditWebsite },
 };
 
@@ -68,8 +76,12 @@ export function getConfig(key: string) {
   return cfg;
 }
 
-export async function listCollection(key: string) {
+const canRead = (cfg: CollectionConfig, user: UserDoc) => (cfg.read ? cfg.read(user) : true);
+const canWrite = (cfg: CollectionConfig, user: UserDoc) => (cfg.write ? cfg.write(user) : canRead(cfg, user));
+
+export async function listCollection(key: string, user: UserDoc) {
   const cfg = getConfig(key);
+  if (!canRead(cfg, user)) return { items: [], initialized: true };
   const db = await getDb();
   const [docs, init] = await Promise.all([
     db.collection(cfg.name).find({}).sort(cfg.sort).limit(cfg.limit || 5000).toArray(),
@@ -83,7 +95,7 @@ type Item = Record<string, any> & { id: string };
 
 export async function applyChanges(key: string, user: UserDoc, upserts: Item[], deletes: string[]) {
   const cfg = getConfig(key);
-  if (cfg.write && !cfg.write(user)) throw new HttpError(403, 'You do not have permission to change this.');
+  if (!canWrite(cfg, user)) throw new HttpError(403, 'You do not have permission to change this.');
   const db = await getDb();
   const collection = db.collection(cfg.name);
 
@@ -225,6 +237,7 @@ async function syncStaffAccount(doc: Record<string, any>, prev: Record<string, a
     let refId: string | undefined;
     if (staffRole === 'Counsellor' || staffRole === 'Mentor') {
       role = staffRole === 'Counsellor' ? 'counselor' : 'mentor';
+      await assertProviderNameFree(set.name as string);
       refId = newId(role);
       const base = {
         _id: refId,

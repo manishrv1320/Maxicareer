@@ -1,5 +1,5 @@
 import { getDb, col, COLLECTIONS } from './db';
-import { HttpError, UserDoc, isStaff } from './auth';
+import { HttpError, UserDoc, canSeeStudentData } from './auth';
 import type { StudentDoc } from './students';
 
 /**
@@ -70,7 +70,8 @@ export interface Viewer {
 
 export function viewerOf(user: UserDoc | null): Viewer {
   if (!user) return { user, full: false, kind: 'anonymous' };
-  if (user.role === 'staff') return { user, full: isStaff(user), kind: 'staff' };
+  // Content editors are staff but only manage the website, so they get no student data.
+  if (user.role === 'staff') return { user, full: canSeeStudentData(user), kind: 'staff' };
   return { user, full: false, profileId: user.refId, kind: user.role };
 }
 
@@ -94,6 +95,24 @@ export async function findProvider(id: string): Promise<{ kind: 'counselor' | 'm
   const m = await (await col<MentorDoc>(COLLECTIONS.mentors)).findOne({ _id: id });
   if (m) return { kind: 'mentor', doc: m };
   return null;
+}
+
+/**
+ * Students are assigned to counsellors and mentors by display name, and each provider sees
+ * the students assigned to their name. So no two providers may share a name (ignoring case),
+ * or one would see the other's students. Rejected sign-ups don't count.
+ */
+export async function assertProviderNameFree(name: string, exceptId?: string) {
+  const clean = name.trim();
+  const filter: Record<string, unknown> = {
+    name: { $regex: `^\\s*${clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, $options: 'i' },
+    approvalStatus: { $ne: 'rejected' },
+  };
+  if (exceptId) filter._id = { $ne: exceptId };
+  const taken =
+    (await (await col(COLLECTIONS.counselors)).findOne(filter as any, { projection: { _id: 1 } })) ||
+    (await (await col(COLLECTIONS.mentors)).findOne(filter as any, { projection: { _id: 1 } }));
+  if (taken) throw new HttpError(409, `Another counsellor or mentor is already called "${clean}". Add a middle initial or surname so students can tell you apart.`);
 }
 
 /** Finds an approved counsellor or mentor by display name (admins assign by name). */

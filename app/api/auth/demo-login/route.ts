@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { route, readJson, fail } from '@/lib/server/http';
 import { col, COLLECTIONS } from '@/lib/server/db';
-import type { UserDoc } from '@/lib/server/auth';
+import { demoLoginEnabled, type UserDoc } from '@/lib/server/auth';
 import { signInResponse } from '@/lib/server/account';
 import { DEMO_STUDENT_LOGINS } from '@/lib/server/demo';
 
@@ -9,10 +9,10 @@ export const dynamic = 'force-dynamic';
 
 /**
  * One-click sign-in to a sample student. Only works while an administrator has
- * sample data loaded, and can be switched off entirely with ENABLE_DEMO_LOGIN=false.
+ * sample data loaded and ENABLE_DEMO_LOGIN=true.
  */
 export const POST = route(async (req: NextRequest) => {
-  if (process.env.ENABLE_DEMO_LOGIN === 'false') return fail('Demo sign-in is turned off.', 403);
+  if (!demoLoginEnabled()) return fail('Demo sign-in is turned off.', 403);
   const demo = await (await col(COLLECTIONS.settings)).findOne({ _id: 'demo_loaded' as any });
   if (!demo?.value) return fail('Sample accounts are not loaded. Sign in with your own account.', 404);
 

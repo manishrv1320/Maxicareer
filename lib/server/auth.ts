@@ -113,6 +113,19 @@ export async function destroyAllSessionsFor(userId: string) {
   await sessions.deleteMany({ userId });
 }
 
+/** Signs the account out everywhere except the browser making this request. */
+export async function destroyOtherSessions(req: NextRequest, userId: string) {
+  const token = req.cookies.get(SESSION_COOKIE)?.value;
+  const sessions = await col(COLLECTIONS.authSessions);
+  await sessions.deleteMany({ userId, ...(token ? { _id: { $ne: hashToken(token) as any } } : {}) });
+}
+
+/**
+ * Sample accounts (clearly marked sample data with publicly known passwords) can only be
+ * used when ENABLE_DEMO_LOGIN=true. Anywhere else they can't sign in or keep a session.
+ */
+export const demoLoginEnabled = () => process.env.ENABLE_DEMO_LOGIN === 'true';
+
 /** Resolves the signed-in user from the session cookie, or null. */
 export async function getCurrentUser(req: NextRequest): Promise<UserDoc | null> {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
@@ -123,6 +136,7 @@ export async function getCurrentUser(req: NextRequest): Promise<UserDoc | null> 
   const users = await col<UserDoc>(COLLECTIONS.users);
   const user = await users.findOne({ _id: session.userId });
   if (!user || user.status === 'disabled') return null;
+  if (user.isDemo && !demoLoginEnabled()) return null;
   return user;
 }
 
@@ -152,6 +166,8 @@ export class HttpError extends Error {
 export const isStaff = (u?: UserDoc | null) => Boolean(u && u.staffRole && u.status === 'active');
 export const isAdmin = (u?: UserDoc | null) => Boolean(isStaff(u) && (u!.staffRole === 'Global admin' || u!.staffRole === 'Admin'));
 export const canEditWebsite = (u?: UserDoc | null) => isAdmin(u) || (isStaff(u) && u!.staffRole === 'Content editor');
+/** Staff who work with students. Content editors only manage the website, so they don't see student records. */
+export const canSeeStudentData = (u?: UserDoc | null) => isStaff(u) && u!.staffRole !== 'Content editor';
 
 export async function requireUser(req: NextRequest): Promise<UserDoc> {
   const user = await getCurrentUser(req);
@@ -181,9 +197,40 @@ export const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test
 
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
+/**
+ * The caller's IP for rate limiting. Headers set by the hosting platform come first; the
+ * first X-Forwarded-For entry is whatever the client typed, so only the last one (added
+ * by the nearest proxy) is used.
+ */
+export function clientIp(req: NextRequest) {
+  const trusted = req.headers.get('x-nf-client-connection-ip') || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip');
+  if (trusted) return trusted.trim();
+  const chain = (req.headers.get('x-forwarded-for') || '').split(',').map((s) => s.trim()).filter(Boolean);
+  return chain[chain.length - 1] || 'local';
+}
+
+/**
+ * True only for a request typed on this computer (http://localhost). Requests through a
+ * tunnel, proxy or the local network carry other hosts or forwarding headers.
+ */
+export function isLocalRequest(req: NextRequest) {
+  if (['x-real-ip', 'cf-connecting-ip', 'x-nf-client-connection-ip', 'forwarded'].some((h) => req.headers.has(h))) return false;
+  // Next.js fills X-Forwarded-For with the caller's address, so it may only name this computer.
+  const loopback = /^(127\.\d+\.\d+\.\d+|::1|::ffff:127\.\d+\.\d+\.\d+)$/;
+  const chain = (req.headers.get('x-forwarded-for') || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (chain.some((ip) => !loopback.test(ip))) return false;
+  const host = (req.headers.get('host') || '').replace(/:\d+$/, '').toLowerCase();
+  return host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+}
+
 export function rateLimit(req: NextRequest, bucket: string, limit: number, windowMs: number) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'local';
-  limitKey(`${bucket}:${ip}`, limit, windowMs);
+  limitKey(`${bucket}:${clientIp(req)}`, limit, windowMs);
+}
+
+/** Drops expired counters so the map can't grow without limit. */
+function pruneBuckets(now: number) {
+  if (buckets.size < 5000) return;
+  for (const [key, entry] of buckets) if (entry.resetAt < now) buckets.delete(key);
 }
 
 /** Throws 429 if `key` has already passed `limit` events in its window (without counting). */
@@ -204,6 +251,7 @@ export function limitKey(key: string, limit: number, windowMs: number) {
   const now = Date.now();
   const entry = buckets.get(key);
   if (!entry || entry.resetAt < now) {
+    pruneBuckets(now);
     buckets.set(key, { count: 1, resetAt: now + windowMs });
     return;
   }

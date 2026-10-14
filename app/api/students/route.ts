@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import type { Filter } from 'mongodb';
 import { route, ok, fail, readJson, str } from '@/lib/server/http';
 import { col, COLLECTIONS } from '@/lib/server/db';
-import { getCurrentUser, requireStaff, isStaff, isValidEmail, normaliseEmail, rateLimit } from '@/lib/server/auth';
+import { getCurrentUser, requireStaff, canSeeStudentData, isValidEmail, normaliseEmail, rateLimit } from '@/lib/server/auth';
 import { StudentDoc, buildStudent, recordPublicLead, computeStats, sanitizeAdminPatch } from '@/lib/server/students';
 import { recordSubmission } from '@/lib/server/submissions';
 
@@ -12,7 +12,8 @@ const SORTABLE = new Set(['createdAt', 'updatedAt', 'name', 'planPrice', 'status
 
 /** Student records for the admin portal (staff only). */
 export const GET = route(async (req: NextRequest) => {
-  await requireStaff(req);
+  const user = await requireStaff(req);
+  if (!canSeeStudentData(user)) return ok({ count: 0, data: [], stats: await computeStats([]) });
   const sp = req.nextUrl.searchParams;
   const filter: Filter<StudentDoc> = {};
   const profession = sp.get('profession');
@@ -42,7 +43,7 @@ export const POST = route(async (req: NextRequest) => {
   const email = normaliseEmail(body.email);
   if (!str(body.name, 120) || !isValidEmail(email)) return fail('Student name and a valid email are required.');
 
-  if (isStaff(user)) {
+  if (canSeeStudentData(user)) {
     const doc = buildStudent({ ...body, email }, 'admin_manual');
     const patch = sanitizeAdminPatch(body);
     Object.assign(doc, patch, { source: 'admin_manual' });

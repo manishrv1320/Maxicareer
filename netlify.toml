@@ -1,0 +1,8 @@
+# Netlify build settings (these override the ones in the Netlify UI).
+# Packages are installed with npm from package-lock.json.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"

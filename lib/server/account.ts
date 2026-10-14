@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { col, COLLECTIONS, newId, nowIso } from './db';
-import { createSession, setSessionCookie, toPublicUser, hashPassword, isStaff, type UserDoc } from './auth';
+import { createSession, setSessionCookie, toPublicUser, hashPassword, isStaff, demoLoginEnabled, HttpError, type UserDoc } from './auth';
 import { StudentDoc, toPlatformStudent, buildStudent, type StudentSource } from './students';
 import { recordSubmission } from './submissions';
 import { str } from './http';
@@ -28,6 +28,8 @@ export async function sessionPayload(user: UserDoc) {
 
 /** Starts a session and returns a JSON response carrying the session cookie. */
 export async function signInResponse(user: UserDoc, extra: Record<string, unknown> = {}, status = 200) {
+  // Sample accounts have published passwords; they only work while sample sign-in is switched on.
+  if (user.isDemo && !demoLoginEnabled()) throw new HttpError(403, 'Sample accounts are switched off on this site.');
   const { token, expiresAt } = await createSession(user._id);
   const res = NextResponse.json({ success: true, ...(await sessionPayload(user)), ...extra }, { status });
   setSessionCookie(res, token, expiresAt);

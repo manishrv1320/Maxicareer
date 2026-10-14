@@ -3,6 +3,7 @@ import { route, readJson, fail, str } from '@/lib/server/http';
 import { col, COLLECTIONS } from '@/lib/server/db';
 import { normaliseEmail, isValidEmail, validatePassword, rateLimit, type UserDoc } from '@/lib/server/auth';
 import { createStudentAccount, signInResponse } from '@/lib/server/account';
+import type { StudentDoc } from '@/lib/server/students';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,13 @@ export const POST = route(async (req: NextRequest) => {
   const existing = await (await col<UserDoc>(COLLECTIONS.users)).findOne({ email });
   if (existing) return fail('An account with this email already exists. Please sign in instead.', 409);
 
-  const { user, linked } = await createStudentAccount({ ...body, email }, { password: body.password, source: body.planName ? 'portal_registration' : 'self_signup' });
-  return signInResponse(user, { linkedExistingRecord: linked }, 201);
+  // An earlier enquiry or enrolment for this email holds that person's details. A password
+  // sign-up doesn't prove the email is theirs, so they claim it with an emailed code instead.
+  const unclaimed = await (await col<StudentDoc>(COLLECTIONS.students)).findOne({ email, userId: { $exists: false } }, { projection: { _id: 1 } });
+  if (unclaimed) {
+    return fail('We already have a registration for this email. To keep it safe, sign in with a code sent to this email ("Sign in with an email code"). Your details will be waiting.', 409);
+  }
+
+  const { user } = await createStudentAccount({ ...body, email }, { password: body.password, source: body.planName ? 'portal_registration' : 'self_signup' });
+  return signInResponse(user, { linkedExistingRecord: false }, 201);
 });

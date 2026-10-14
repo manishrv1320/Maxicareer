@@ -175,7 +175,7 @@ All settings live in `.env.local` (never committed). [`.env.example`](.env.examp
 | `SUPPORT_MAIL_FROM` | No | Sender of password-reset emails. Default `Maxicareer Support <support@maxicareer.com>`. The domain must be verified in Resend |
 | `MAIL_FROM` · `CONTACT_EMAIL` | No | Sender of other emails, and the inbox for contact-form enquiries |
 | `APP_URL` | In production | Public address used in email links, e.g. `https://maxicareer.com` |
-| `ENABLE_DEMO_LOGIN` | No | `false` turns off sample-account sign-in completely |
+| `ENABLE_DEMO_LOGIN` | No | `true` lets the sample accounts sign in while sample data is loaded. Off by default; keep it off on public sites |
 
 ### Scripts
 
@@ -240,9 +240,12 @@ Maxicareer/
 - **Forgot password** sends a one-time link that expires after 30 minutes. Only its hash is stored, and using it signs the account out on every other device.
 - Uploaded files stay in a **private** container. The app checks who is asking, then hands out a signed link that lasts 10 minutes.
 - Meeting links must be real `https://` addresses. A counsellor's personal room link is never shown to other students.
+- **Staff see only what their role needs.** Content editors get no student records. Finance, form submissions, staff accounts, the audit log and approvals are for admins only.
+- An earlier enquiry can only be claimed by someone who proves they own the email (sign-in code), and no two counsellors or mentors can share a name, since students are assigned by name.
+- Pages send security headers (no framing by other sites, no MIME sniffing, HTTPS-only in production), and CSV exports neutralise spreadsheet formulas.
 
 > [!WARNING]
-> **Sample data is for demos only.** Admins can load clearly marked sample records from **Settings → Sample data**. The sample accounts use publicly known passwords (`password123`, and `admin123` for the sample admin), and the sign-in page lists them while sample data is loaded. **Clear sample data and set `ENABLE_DEMO_LOGIN=false` before going live.**
+> **Sample data is for demos only.** Admins can load clearly marked sample records from **Settings → Sample data**. The sample accounts use publicly known passwords (`password123`, and `admin123` for the sample admin), so they can only sign in when `ENABLE_DEMO_LOGIN=true`. Keep it off, and clear sample data, on any site other people can reach.
 
 ---
 

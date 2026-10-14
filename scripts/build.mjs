@@ -20,10 +20,16 @@ try {
 
 // 1. Build Next.js standalone production build
 console.log('[build] Building Next.js application (standalone)...');
-const nextBin = path.join(projectRoot, 'node_modules', '.bin', 'next');
-const binToRun = fs.existsSync(nextBin) ? nextBin : 'next';
+// Run the CLI's JavaScript entry with Node itself: the extensionless .bin shims can't be
+// spawned directly on Windows (ENOENT), while this works on every OS.
+const nodeCli = (pkgPath, name) => {
+  const entry = path.join(projectRoot, 'node_modules', ...pkgPath);
+  return fs.existsSync(entry) ? [process.execPath, [entry]] : [name, []];
+};
 
-const nextBuild = spawnSync(binToRun, ['build'], {
+const [nextCmd, nextPre] = nodeCli(['next', 'dist', 'bin', 'next'], 'next');
+
+const nextBuild = spawnSync(nextCmd, [...nextPre, 'build'], {
   cwd: projectRoot,
   stdio: 'inherit',
   env: {
@@ -67,10 +73,9 @@ try {
 
 // 2. Build Vite static bundle into dist/
 console.log('[build] Building Vite static client bundle into dist/...');
-const viteBin = path.join(projectRoot, 'node_modules', '.bin', 'vite');
-const viteToRun = fs.existsSync(viteBin) ? viteBin : 'vite';
+const [viteCmd, vitePre] = nodeCli(['vite', 'bin', 'vite.js'], 'vite');
 
-const viteBuild = spawnSync(viteToRun, ['build'], {
+const viteBuild = spawnSync(viteCmd, [...vitePre, 'build'], {
   cwd: projectRoot,
   stdio: 'inherit',
   env: {

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { route, ok, fail, readJson } from '@/lib/server/http';
 import { col, COLLECTIONS, nowIso } from '@/lib/server/db';
-import { requireStaff, requireAdmin, destroyAllSessionsFor, type UserDoc } from '@/lib/server/auth';
+import { requireStaff, requireAdmin, destroyAllSessionsFor, canSeeStudentData, HttpError, type UserDoc } from '@/lib/server/auth';
 import { StudentDoc, computeStats, sanitizeAdminPatch } from '@/lib/server/students';
 import { notifyUser } from '@/lib/server/notify';
 import { findProviderByName } from '@/lib/server/viewer';
@@ -10,8 +10,15 @@ export const dynamic = 'force-dynamic';
 
 type Ctx = { params: Promise<{ id: string }> };
 
+/** Staff who work with students (not content editors). */
+async function requireStudentStaff(req: NextRequest) {
+  const user = await requireStaff(req);
+  if (!canSeeStudentData(user)) throw new HttpError(403, 'Your role does not include student records.');
+  return user;
+}
+
 export const GET = route<Ctx>(async (req, { params }) => {
-  await requireStaff(req);
+  await requireStudentStaff(req);
   const { id } = await params;
   const student = await (await col<StudentDoc>(COLLECTIONS.students)).findOne({ _id: id });
   if (!student) return fail('Student not found.', 404);
@@ -19,7 +26,7 @@ export const GET = route<Ctx>(async (req, { params }) => {
 });
 
 export const PATCH = route<Ctx>(async (req: NextRequest, { params }) => {
-  await requireStaff(req);
+  await requireStudentStaff(req);
   const { id } = await params;
   const patch = sanitizeAdminPatch(await readJson(req));
   const students = await col<StudentDoc>(COLLECTIONS.students);

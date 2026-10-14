@@ -27,6 +27,7 @@ import {
   findProvider,
   isConnected,
   assertOwnsRelation,
+  assertProviderNameFree,
 } from './viewer';
 import { buildPortalState, PORTAL_ACTIONS, isIsoDay } from './portal';
 
@@ -229,6 +230,7 @@ async function createProviderAccount(kind: 'counselor' | 'mentor', p: Record<str
 
   const users = await col<UserDoc>(COLLECTIONS.users);
   if (await users.findOne({ email })) throw new HttpError(409, 'An account with this email already exists. Please sign in instead.');
+  await assertProviderNameFree(name);
 
   const profileId = newId(kind);
   const userId = newId('user');
@@ -310,6 +312,7 @@ export async function setProviderApproval(kind: 'counselor' | 'mentor', id: stri
   const profiles = await col<CounselorDoc | MentorDoc>(kind === 'counselor' ? COLLECTIONS.counselors : COLLECTIONS.mentors);
   const doc = await profiles.findOne({ _id: id });
   if (!doc) throw new HttpError(404, 'Profile not found.');
+  if (status === 'approved') await assertProviderNameFree(doc.name, id);
   await profiles.updateOne({ _id: id }, { $set: { approvalStatus: status } });
   const users = await col<UserDoc>(COLLECTIONS.users);
   const user = await users.findOne({ refId: id });
@@ -418,6 +421,10 @@ const ACTIONS: Record<string, ActionFn> = {
     if ('blockedDates' in u) set.blockedDates = isoDays(u.blockedDates);
     if ('experienceYears' in u) set.experienceYears = Math.max(0, Math.min(60, Number(u.experienceYears) || 0));
     if ('meetingLink' in u) set.meetingLink = meetingUrl(u.meetingLink);
+    if ('name' in set) {
+      if (!set.name) throw new HttpError(400, 'Your name is required.');
+      await assertProviderNameFree(set.name as string, id);
+    }
     const counselors = await col<CounselorDoc>(COLLECTIONS.counselors);
     const before = 'meetingLink' in set ? await counselors.findOne({ _id: id }) : null;
     await counselors.updateOne({ _id: id }, { $set: set });
@@ -435,6 +442,10 @@ const ACTIONS: Record<string, ActionFn> = {
     if ('blockedDates' in u) set.blockedDates = isoDays(u.blockedDates);
     if ('experienceYears' in u) set.experienceYears = Math.max(0, Math.min(60, Number(u.experienceYears) || 0));
     if ('meetingLink' in u) set.meetingLink = meetingUrl(u.meetingLink);
+    if ('name' in set) {
+      if (!set.name) throw new HttpError(400, 'Your name is required.');
+      await assertProviderNameFree(set.name as string, id);
+    }
     const mentors = await col<MentorDoc>(COLLECTIONS.mentors);
     const before = 'meetingLink' in set ? await mentors.findOne({ _id: id }) : null;
     await mentors.updateOne({ _id: id }, { $set: set });
@@ -500,6 +511,11 @@ const ACTIONS: Record<string, ActionFn> = {
       rateLimit(req, 'booking', 8, 15 * 60_000);
       const email = normaliseEmail(p.studentEmail);
       if (!isValidEmail(email)) throw new HttpError(400, 'Please enter a valid email address.');
+      // A booking connects the counsellor to that student's record, so an existing
+      // account must sign in first; otherwise anyone could book under someone else's email.
+      if (await (await col<UserDoc>(COLLECTIONS.users)).findOne({ email }, { projection: { _id: 1 } })) {
+        throw new HttpError(409, 'This email already has a Maxicareer account. Please sign in to book a session.');
+      }
       ({ student } = await recordPublicLead(
         { name: p.studentName, email, phone: p.studentPhone, planName: 'Career counselling', detail: p.topic, message: p.notes },
         'counseling_request'

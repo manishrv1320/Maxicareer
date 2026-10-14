@@ -8,9 +8,9 @@ export const dynamic = 'force-dynamic';
 type Ctx = { params: Promise<{ collection: string }> };
 
 export const GET = route<Ctx>(async (req, { params }) => {
-  await requireStaff(req);
+  const user = await requireStaff(req);
   const { collection } = await params;
-  return ok(await listCollection(collection));
+  return ok(await listCollection(collection, user));
 });
 
 /** Body: { upserts: Item[], deletes: string[] } */
@@ -19,5 +19,5 @@ export const POST = route<Ctx>(async (req: NextRequest, { params }) => {
   const { collection } = await params;
   const { upserts = [], deletes = [] } = await readJson<{ upserts?: any[]; deletes?: string[] }>(req);
   await applyChanges(collection, user, upserts, deletes);
-  return ok(await listCollection(collection));
+  return ok(await listCollection(collection, user));
 });
