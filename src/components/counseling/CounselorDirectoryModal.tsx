@@ -253,7 +253,7 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
                   ? 'Counseling Request Submitted'
                   : isBookingStep
                   ? `Book Session with ${selectedCounselor?.name}`
-                  : 'MaxiCareer Certified Career Counselors'}
+                  : 'Maxicareer Certified Career Counselors'}
               </h2>
               <p className="text-xs text-slate-400">
                 {isBookingStep
@@ -573,7 +573,7 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
                   </h3>
                   <p className="text-xs text-slate-500 leading-relaxed">
                     {approvedCounselors.length === 0
-                      ? 'No accredited counselors have registered and been approved yet in this environment. Career guidance specialists can register via the MaxiCareer Internal Portal.'
+                      ? 'No accredited counselors have registered and been approved yet in this environment. Career guidance specialists can register via the Maxicareer Internal Portal.'
                       : 'No counselors matched your search criteria. Try removing some filters.'}
                   </p>
                 </div>

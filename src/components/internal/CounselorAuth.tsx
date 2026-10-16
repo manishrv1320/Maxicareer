@@ -234,7 +234,7 @@ export const CounselorAuth: React.FC<CounselorAuthProps> = ({
           </div>
 
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Once approved by the MaxiCareer administration, your profile will be published in the
+            Once approved by the Maxicareer administration, your profile will be published in the
             public counselor directory, and you will receive full access to the Counselor Workspace.
           </p>
 
@@ -387,7 +387,7 @@ export const CounselorAuth: React.FC<CounselorAuthProps> = ({
             </div>
             <h1 className="text-2xl font-black text-slate-900">Create Counselor Account</h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Join the MaxiCareer certified counseling network. All registrations undergo
+              Join the Maxicareer certified counseling network. All registrations undergo
               administrative verification.
             </p>
           </div>

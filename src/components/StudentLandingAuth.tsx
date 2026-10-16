@@ -151,7 +151,7 @@ export const StudentLandingAuth: React.FC<StudentLandingAuthProps> = ({
     const planNameMap: Record<UserProfession, string> = {
       school: 'Step-Ready career program (School Students)',
       college: 'Step-Next career program (College Students)',
-      fresher: 'Step-In career program (Freshers/ PSW)',
+      fresher: 'Step-In career program (Freshers / PSW)',
       working_professional: 'Step-Up career program (Working Professionals)',
     };
 
@@ -182,7 +182,7 @@ export const StudentLandingAuth: React.FC<StudentLandingAuthProps> = ({
       phone: registerPhone.trim(),
       profession: selectedCohort,
       professionLabel: profLabelMap[selectedCohort],
-      institutionOrCompany: 'MaxiCareer Student Portal',
+      institutionOrCompany: 'Maxicareer Student Portal',
       detail: `Registered for ${planNameMap[selectedCohort]}`,
       planName: planNameMap[selectedCohort],
       planPrice: 0,
@@ -300,7 +300,7 @@ export const StudentLandingAuth: React.FC<StudentLandingAuthProps> = ({
                 </h2>
 
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Join MaxiCareer to discover your ideal career trajectory, access tailored learning roadmaps, and submit 1-click registrations for our mentorship programs with direct WhatsApp &amp; Email support.
+                  Join Maxicareer to discover your ideal career trajectory, access tailored learning roadmaps, and submit 1-click registrations for our mentorship programs with direct WhatsApp &amp; Email support.
                 </p>
 
                 <div className="space-y-3 pt-2">

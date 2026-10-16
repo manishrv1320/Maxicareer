@@ -171,7 +171,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
               </div>
 
               <h3 className="text-2xl font-bold text-[#0F172A]">
-                We are Here to Guide Your Career
+                We Are Here to Guide Your Career
               </h3>
 
               <p className="text-sm text-slate-600 leading-relaxed">
@@ -244,7 +244,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({
                 </li>
                 <li className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-[#2563EB] flex-shrink-0 mt-0.5" />
-                  <span>No obligation consultation discovery</span>
+                  <span>No-obligation discovery consultation</span>
                 </li>
                 <li className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-[#2563EB] flex-shrink-0 mt-0.5" />

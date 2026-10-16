@@ -30,21 +30,21 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   const isDark = variant === 'dark' || variant === 'dark-tagline';
 
   // Determine asset paths from /images/ with cache-buster
-  let src = '/images/maxicareer-logo.png?v=3';
-  let svgSrc = '/images/maxicareer-logo.svg?v=3';
+  let src = '/images/maxicareer-logo.png?v=4';
+  let svgSrc = '/images/maxicareer-logo.svg?v=4';
 
   if (isIconOnly) {
-    src = '/images/maxicareer-icon.png?v=3';
-    svgSrc = '/images/maxicareer-icon.svg?v=3';
+    src = '/images/maxicareer-icon.png?v=4';
+    svgSrc = '/images/maxicareer-icon.svg?v=4';
   } else if (isStacked) {
-    src = '/images/maxicareer-logo-stacked.png?v=3';
-    svgSrc = '/images/maxicareer-logo-stacked.png?v=3';
+    src = '/images/maxicareer-logo-stacked.png?v=4';
+    svgSrc = '/images/maxicareer-logo-stacked.png?v=4';
   } else if (isTagline) {
-    src = '/images/maxicareer-logo-tagline.png?v=3';
-    svgSrc = '/images/maxicareer-logo-tagline.svg?v=3';
+    src = '/images/maxicareer-logo-tagline.png?v=4';
+    svgSrc = '/images/maxicareer-logo-tagline.svg?v=4';
   } else if (isDark) {
-    src = '/images/maxicareer-logo-white.png?v=3';
-    svgSrc = '/images/maxicareer-logo-white.svg?v=3';
+    src = '/images/maxicareer-logo-white.png?v=4';
+    svgSrc = '/images/maxicareer-logo-white.svg?v=4';
   }
 
   // Size styling while strictly preserving aspect ratio and ensuring high visibility

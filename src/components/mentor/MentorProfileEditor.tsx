@@ -46,7 +46,7 @@ export const MentorProfileEditor: React.FC<MentorProfileEditorProps> = ({
       <div>
         <h2 className="text-xl font-black text-slate-900">Industry Mentor Profile Settings</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          These credentials, company affiliation, and availability settings are displayed to mentees across the MaxiCareer portal.
+          These credentials, company affiliation, and availability settings are displayed to mentees across the Maxicareer portal.
         </p>
       </div>
 

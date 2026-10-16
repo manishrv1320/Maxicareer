@@ -134,7 +134,7 @@ export const AdminWorkspace: React.FC<AdminWorkspaceProps> = ({
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200 mb-2">
             <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-            <span>Institutional Governance &bull; MaxiCareer Administrator</span>
+            <span>Institutional Governance &bull; Maxicareer Administrator</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Administrator Workspace

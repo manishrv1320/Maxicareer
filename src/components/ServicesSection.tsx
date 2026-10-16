@@ -244,7 +244,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({
               Foundational Career Pillars
             </h3>
             <p className="text-xs sm:text-sm text-slate-600 mt-1">
-              Explore the core skills and advisory services integrated into every MaxiCareer mentorship program.
+              Explore the core skills and advisory services integrated into every Maxicareer mentorship program.
             </p>
           </div>
 

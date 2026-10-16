@@ -31,7 +31,7 @@ export const InternalPortalLanding: React.FC<InternalPortalLandingProps> = ({
           <span>maxicareer_internal.com &bull; Unified Professional Architecture</span>
         </div>
         <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight">
-          MaxiCareer Internal Portal
+          Maxicareer Internal Portal
         </h1>
         <p className="mt-4 text-base sm:text-lg text-slate-600 leading-relaxed">
           Access your dedicated professional workspace. Connect as a Student, accredited Counselor,

@@ -930,7 +930,7 @@ export const CounselorWorkspace: React.FC<CounselorWorkspaceProps> = ({
                     <Award className="w-12 h-12 mx-auto text-slate-300" />
                     <h3 className="font-bold text-slate-900 text-base">No assessments completed</h3>
                     <p className="text-xs text-slate-500">
-                      When students complete the MaxiCareer assessment batteries, scores and
+                      When students complete the Maxicareer assessment batteries, scores and
                       suggested fields are indexed here.
                     </p>
                   </div>

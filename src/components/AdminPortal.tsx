@@ -877,7 +877,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
 
                     <a
                       href={`https://wa.me/${selectedStudent.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                        `Hello ${selectedStudent.name}! Congratulations, your course registration for "${selectedStudent.planName}" at MaxiCareer has been verified and confirmed! Our mentorship team is ready to schedule your 1:1 onboarding session.`
+                        `Hello ${selectedStudent.name}! Congratulations, your course registration for "${selectedStudent.planName}" at Maxicareer has been verified and confirmed! Our mentorship team is ready to schedule your 1:1 onboarding session.`
                       )}`}
                       target="_blank"
                       rel="noreferrer"
@@ -889,9 +889,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
 
                     <a
                       href={`mailto:${selectedStudent.email}?subject=${encodeURIComponent(
-                        `MaxiCareer Course Confirmation: ${selectedStudent.planName}`
+                        `Maxicareer Course Confirmation: ${selectedStudent.planName}`
                       )}&body=${encodeURIComponent(
-                        `Dear ${selectedStudent.name},\n\nWe are delighted to confirm your registration for the ${selectedStudent.planName} at MaxiCareer!\n\nOur team has verified your details and your assigned mentor will be in touch shortly to schedule your personalized 1:1 strategy session.\n\nWarm regards,\nMaxiCareer Team`
+                        `Dear ${selectedStudent.name},\n\nWe are delighted to confirm your registration for the ${selectedStudent.planName} at Maxicareer!\n\nOur team has verified your details and your assigned mentor will be in touch shortly to schedule your personalized 1:1 strategy session.\n\nWarm regards,\nMaxicareer Team`
                       )}`}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] bg-blue-100 hover:bg-blue-200 text-blue-900 text-[12.5px] font-semibold border border-blue-300/80 transition-colors"
                     >

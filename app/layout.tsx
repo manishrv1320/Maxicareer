@@ -1,7 +1,22 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
+// Link previews (WhatsApp, LinkedIn, X) need absolute image URLs. APP_URL wins; on Vercel the
+// production domain is the fallback.
+const siteUrl =
+  process.env.APP_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:3000');
+
+const previewImage = {
+  url: '/images/og-image.png',
+  width: 1200,
+  height: 630,
+  type: 'image/png',
+  alt: 'Maxicareer: Career Guidance & Mentorship',
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: 'Maxicareer | Career Guidance and Mentorship',
   description:
     'Maxicareer provides personalized career guidance, mentorship, skill development, and practical support to help students and aspiring professionals achieve their goals.',
@@ -10,6 +25,13 @@ export const metadata: Metadata = {
     description:
       'Maxicareer provides personalized career guidance, mentorship, skill development, and practical support to help students and aspiring professionals achieve their goals.',
     type: 'website',
+    siteName: 'Maxicareer',
+    locale: 'en_IN',
+    images: [previewImage],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: [previewImage.url],
   },
   icons: {
     icon: [

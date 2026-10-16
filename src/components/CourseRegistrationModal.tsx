@@ -46,11 +46,11 @@ export const COURSE_PROGRAMS_DATA: CourseProgramConfig[] = [
     profession: 'working_professional',
     cohortBadge: 'Working Professionals',
     name: 'Step-Up career program',
-    tagline: 'Career transition, Go next!',
+    tagline: 'Career Transition, Go Next!',
     features: [
-      'Find your career Path',
+      'Find Your Career Path',
       'Resume',
-      'Linkedin Optimization',
+      'LinkedIn Optimization',
       'Cover Letter',
       'Interview Preparation',
       'Networking with Industry Experts',
@@ -61,13 +61,13 @@ export const COURSE_PROGRAMS_DATA: CourseProgramConfig[] = [
   {
     id: 'program-freshers-psw',
     profession: 'fresher',
-    cohortBadge: 'Freshers/ PSW',
+    cohortBadge: 'Freshers / PSW',
     name: 'Step-In career program',
-    tagline: 'Understand your career, get your job!',
+    tagline: 'Understand Your Career, Get Your Job!',
     features: [
-      'Find your career Path',
+      'Find Your Career Path',
       'Resume',
-      'Linkedin Optimization',
+      'LinkedIn Optimization',
       'Cover Letter',
       'Interview Preparation',
       'Networking with Industry Experts',
@@ -83,7 +83,7 @@ export const COURSE_PROGRAMS_DATA: CourseProgramConfig[] = [
     tagline: 'Plan Ahead, Step into Success!',
     features: [
       'Internship Guidance',
-      'How to approach Universities?',
+      'How to approach universities?',
       'Networking',
       'Resume',
       'Cover Letter',
@@ -91,7 +91,7 @@ export const COURSE_PROGRAMS_DATA: CourseProgramConfig[] = [
       'Networking with Industry Experts',
     ],
     support: 'Long-Term Career Coaching',
-    duration: '1 Month to 1 year',
+    duration: '1 month to 1 year',
   },
   {
     id: 'program-school-students',
@@ -106,7 +106,7 @@ export const COURSE_PROGRAMS_DATA: CourseProgramConfig[] = [
       'Time management',
     ],
     support: 'Long-Term Career Coaching',
-    duration: '1 Month to 1 year',
+    duration: '1 month to 1 year',
   },
 ];
 
@@ -252,7 +252,7 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
       selectedAddOns: selectedFeatures,
       status: 'pending',
       mentorAssigned: 'Unassigned',
-      notes: notes.trim() || 'Registered for mentorship via MaxiCareer website.',
+      notes: notes.trim() || 'Registered for mentorship via Maxicareer website.',
       academicDetails: {
         institutionOrCompany: institutionOrCompany.trim(),
         currentLevel: currentRoleOrYear.trim(),
@@ -316,7 +316,7 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
   // Generate direct WhatsApp link for this student
   const getWhatsAppLink = () => {
     if (!submittedStudent) return `https://wa.me/${OFFICIAL_PHONE_DIGITS}`;
-    const text = `*MaxiCareer Mentorship Course Registration* 🎓\n--------------------------------\n*Student Name:* ${submittedStudent.name}\n*Program:* ${submittedStudent.programName}\n*Category:* ${activeProgram.cohortBadge}\n*Phone:* ${submittedStudent.phone}\n*Email:* ${submittedStudent.email}\n*City:* ${submittedStudent.city}\n*Institution/Company:* ${submittedStudent.institutionOrCompany || 'N/A'}\n*Target Goal:* ${submittedStudent.goal || 'Career Mentorship'}\n--------------------------------\nHello MaxiCareer Mentorship Team, I have just registered for the *${submittedStudent.programName}*! Please confirm my course enrollment and schedule my initial consultation session.`;
+    const text = `*Maxicareer Mentorship Course Registration* 🎓\n--------------------------------\n*Student Name:* ${submittedStudent.name}\n*Program:* ${submittedStudent.programName}\n*Category:* ${activeProgram.cohortBadge}\n*Phone:* ${submittedStudent.phone}\n*Email:* ${submittedStudent.email}\n*City:* ${submittedStudent.city}\n*Institution/Company:* ${submittedStudent.institutionOrCompany || 'N/A'}\n*Target Goal:* ${submittedStudent.goal || 'Career Mentorship'}\n--------------------------------\nHello Maxicareer Mentorship Team, I have just registered for the *${submittedStudent.programName}*! Please confirm my course enrollment and schedule my initial consultation session.`;
     return `https://wa.me/${OFFICIAL_PHONE_DIGITS}?text=${encodeURIComponent(text)}`;
   };
 
@@ -324,7 +324,7 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
   const getEmailLink = () => {
     if (!submittedStudent) return `mailto:${OFFICIAL_EMAIL}`;
     const subject = `Course Registration: ${submittedStudent.name} - ${submittedStudent.programName}`;
-    const body = `Dear MaxiCareer Mentorship Team,\n\nI have registered for the ${submittedStudent.programName} on your website.\n\nStudent Registration Details:\n- Name: ${submittedStudent.name}\n- Email: ${submittedStudent.email}\n- Phone: ${submittedStudent.phone}\n- Category: ${activeProgram.cohortBadge}\n- Institution / Company: ${submittedStudent.institutionOrCompany}\n- Career Goal: ${submittedStudent.goal}\n\nPlease verify my registration and schedule my 1:1 mentor onboarding session.\n\nThank you,\n${submittedStudent.name}`;
+    const body = `Dear Maxicareer Mentorship Team,\n\nI have registered for the ${submittedStudent.programName} on your website.\n\nStudent Registration Details:\n- Name: ${submittedStudent.name}\n- Email: ${submittedStudent.email}\n- Phone: ${submittedStudent.phone}\n- Category: ${activeProgram.cohortBadge}\n- Institution / Company: ${submittedStudent.institutionOrCompany}\n- Career Goal: ${submittedStudent.goal}\n\nPlease verify my registration and schedule my 1:1 mentor onboarding session.\n\nThank you,\n${submittedStudent.name}`;
     return `mailto:${OFFICIAL_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
@@ -680,7 +680,7 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200 mb-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  Recorded in MaxiCareer Student Database
+                  Recorded in Maxicareer Student Database
                 </span>
                 <h3 className="text-2xl font-black text-slate-900">
                   Registration Successful, {submittedStudent?.name}!
@@ -690,7 +690,7 @@ export const CourseRegistrationModal: React.FC<CourseRegistrationModalProps> = (
                   <span className="font-bold text-blue-700">
                     {submittedStudent?.programName}
                   </span>
-                  . Your application is now visible in the MaxiCareer Admin Portal for course confirmation and mentor assignment.
+                  . Your application is now visible in the Maxicareer Admin Portal for course confirmation and mentor assignment.
                 </p>
               </div>
 

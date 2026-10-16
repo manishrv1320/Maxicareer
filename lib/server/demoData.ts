@@ -529,7 +529,7 @@ export const DEMO_PLATFORM: Record<string, any> = {
     {
       id: 'admin-01',
       email: 'admin@maxicareer.com',
-      name: 'MaxiCareer Lead Administrator',
+      name: 'Maxicareer Lead Administrator',
       role: 'admin',
     },
   ],
@@ -723,7 +723,7 @@ export const DEMO_PLATFORM: Record<string, any> = {
     {
       id: 'asm-demo-01',
       studentId: 'student-demo-darshani',
-      assessmentName: 'MaxiCareer Technical & Analytical Aptitude Battery',
+      assessmentName: 'Maxicareer Technical & Analytical Aptitude Battery',
       completionDate: 'September 15, 2026',
       scorePercent: 88,
       strengths: ['Algorithmic Logic', 'Abstract Reasoning', 'Critical System Thinking'],
@@ -738,7 +738,7 @@ export const DEMO_PLATFORM: Record<string, any> = {
     {
       id: 'asm-demo-02',
       studentId: 'student-demo-aarav',
-      assessmentName: 'MaxiCareer STEM Stream & Career Interest Profiler',
+      assessmentName: 'Maxicareer STEM Stream & Career Interest Profiler',
       completionDate: 'September 13, 2026',
       scorePercent: 91,
       strengths: ['Mathematical Modeling', 'Spatial Intelligence', 'Curiosity & Learning Agility'],

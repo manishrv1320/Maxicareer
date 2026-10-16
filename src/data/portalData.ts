@@ -15,15 +15,15 @@ export const PROFESSION_OPTIONS: {
   {
     id: 'working_professional',
     title: 'Working Professionals',
-    subtitle: 'Career transition, Go next!',
+    subtitle: 'Career Transition, Go Next!',
     badge: '0–10+ Years Exp',
     description:
       'Step-Up career program for strategic pivots, executive resume, LinkedIn optimization, interview prep, and industry expert networking.',
   },
   {
     id: 'fresher',
-    title: 'Freshers/ PSW',
-    subtitle: 'Understand your career, get your job!',
+    title: 'Freshers / PSW',
+    subtitle: 'Understand Your Career, Get Your Job!',
     badge: 'Fresh Grad / PSW',
     description:
       'Step-In career program tailored for fresh graduates and post-study work visa holders seeking high-trajectory employment.',
@@ -118,7 +118,7 @@ export const ADD_ON_SERVICES: AddOnService[] = [
 
 /**
  * Career Programs matching exact image 2 columns:
- * Working Professionals | Freshers/ PSW | College Students | School Students
+ * Working Professionals | Freshers / PSW | College Students | School Students
  */
 export const CAREER_PROGRAMS_LIST: PricingPlan[] = [
   {
@@ -130,12 +130,12 @@ export const CAREER_PROGRAMS_LIST: PricingPlan[] = [
     originalPrice: 35999,
     launchOffer: true,
     popular: true,
-    tagline: 'Career transition, Go next!',
+    tagline: 'Career Transition, Go Next!',
     recommendedFor: 'Working professionals aiming for career advancement or role pivot',
     features: [
-      'Find your career Path',
+      'Find Your Career Path',
       'Resume',
-      'Linkedin Optimization',
+      'LinkedIn Optimization',
       'Cover Letter',
       'Interview Preparation',
       'Networking with Industry Experts',
@@ -144,18 +144,18 @@ export const CAREER_PROGRAMS_LIST: PricingPlan[] = [
   {
     id: 'program-freshers-psw',
     profession: 'fresher',
-    cohortBadge: 'Freshers/ PSW',
+    cohortBadge: 'Freshers / PSW',
     name: 'Step-In career program',
     price: 15999,
     originalPrice: 35999,
     launchOffer: true,
     popular: true,
-    tagline: 'Understand your career, get your job!',
+    tagline: 'Understand Your Career, Get Your Job!',
     recommendedFor: 'Fresh graduates & post-study work job seekers entering industry',
     features: [
-      'Find your career Path',
+      'Find Your Career Path',
       'Resume',
-      'Linkedin Optimization',
+      'LinkedIn Optimization',
       'Cover Letter',
       'Interview Preparation',
       'Networking with Industry Experts',
@@ -173,7 +173,7 @@ export const CAREER_PROGRAMS_LIST: PricingPlan[] = [
     recommendedFor: 'Undergraduate and postgraduate students preparing for placements',
     features: [
       'Internship Guidance',
-      'How to approach Universities?',
+      'How to approach universities?',
       'Networking',
       'Resume',
       'Cover Letter',
