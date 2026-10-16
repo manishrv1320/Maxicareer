@@ -925,7 +925,7 @@ const LEGACY_SETTINGS: [string, string][] = [
 interface Health {
   data: { isRealMongo: boolean; dbName: string; uriHost: string; totalStudents: number; lastPingMs: number };
   storage: { configured: boolean; ok: boolean; container: string; ms: number; error?: string };
-  mail: { configured: boolean; ok: boolean; via: 'smtp' | 'resend' | 'none'; host?: string; user?: string; trimmed: string[]; error?: string };
+  mail: { configured: boolean; ok: boolean; ms: number; via: 'smtp' | 'resend' | 'none'; host?: string; user?: string; trimmed: string[]; error?: string };
 }
 
 export const SettingsPage: React.FC<{ onLogout: () => void; onBackToSite: () => void }> = ({ onLogout, onBackToSite }) => {
