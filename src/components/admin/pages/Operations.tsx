@@ -925,7 +925,7 @@ const LEGACY_SETTINGS: [string, string][] = [
 interface Health {
   data: { isRealMongo: boolean; dbName: string; uriHost: string; totalStudents: number; lastPingMs: number };
   storage: { configured: boolean; ok: boolean; container: string; ms: number; error?: string };
-  mail: { configured: boolean };
+  mail: { configured: boolean; ok: boolean; via: 'smtp' | 'resend' | 'none'; host?: string; user?: string; trimmed: string[]; error?: string };
 }
 
 export const SettingsPage: React.FC<{ onLogout: () => void; onBackToSite: () => void }> = ({ onLogout, onBackToSite }) => {
@@ -1062,7 +1062,17 @@ export const SettingsPage: React.FC<{ onLogout: () => void; onBackToSite: () => 
               : 'Not configured: set AZURE_STORAGE_CONNECTION_STRING to enable uploads'
             : 'Uploaded photos, attachments and website images'
         )}
-        {row('Email (Resend)', health ? health.mail.configured : null, health?.mail.configured ? 'Sign-in codes and enquiry alerts are emailed' : 'Not configured: set RESEND_API_KEY to send emails')}
+        {row(
+          health?.mail.via === 'smtp' ? 'Email (SMTP)' : 'Email (Resend)',
+          health ? health.mail.ok : null,
+          !health
+            ? 'Password resets, sign-in codes and enquiry alerts'
+            : !health.mail.configured
+              ? 'Not configured: set SMTP_HOST, SMTP_USER and SMTP_PASS (or RESEND_API_KEY) to send emails'
+              : health.mail.via === 'smtp'
+                ? `${health.mail.user} via ${health.mail.host}${health.mail.ok ? ` · ${health.mail.ms} ms` : ` · ${health.mail.error}`}${health.mail.trimmed.length ? ` · extra spaces ignored in ${health.mail.trimmed.join(', ')}` : ''}`
+                : 'Password resets, sign-in codes and enquiry alerts are emailed'
+        )}
       </Panel>
 
       {isAdmin && (

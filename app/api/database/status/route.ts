@@ -4,21 +4,22 @@ import { route, ok, fail, readJson } from '@/lib/server/http';
 import { requireStaff, requireAdmin } from '@/lib/server/auth';
 import { computeStats } from '@/lib/server/students';
 import { isBlobConfigured, pingBlob, containerName } from '@/lib/server/blob';
-import { isMailConfigured } from '@/lib/server/mail';
+import { isMailConfigured, pingMail } from '@/lib/server/mail';
 
 export const dynamic = 'force-dynamic';
 
 /** Health of MongoDB, Azure Blob Storage and email for the admin Settings page. */
 export const GET = route(async (req: NextRequest) => {
   await requireStaff(req);
-  const [stats, blob] = await Promise.all([
+  const [stats, blob, mail] = await Promise.all([
     computeStats(),
     isBlobConfigured() ? pingBlob() : Promise.resolve({ ok: false, ms: 0, container: containerName(), error: 'Not configured' }),
+    pingMail(),
   ]);
   return ok({
     data: stats,
     storage: { configured: isBlobConfigured(), ...blob },
-    mail: { configured: isMailConfigured() },
+    mail: { configured: isMailConfigured(), ...mail },
   });
 });
 
