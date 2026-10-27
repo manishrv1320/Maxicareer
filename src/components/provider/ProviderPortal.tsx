@@ -31,6 +31,7 @@ import { ProviderContext, ProviderCtx, ProviderKind, ProviderPage, PAGE_ALIASES,
 import { SessionNotesModal, TaskModal, MeetingLinkModal } from './modals';
 import { DashboardPage, CalendarPage, NotificationsPage } from './OverviewPages';
 import { MenteesPage, SessionsPage, AvailabilityPage, MenteeDrawer } from './MenteePages';
+import { ChangePasswordGate } from '../workspace/ChangePasswordGate';
 import { PendingPage, NotesPage, AssignmentsPage, FollowUpsPage, ChatPage } from './WorkPages';
 import { ReportsPage, HoursPage, PaymentsPage, ExpensesPage } from './InsightPages';
 import { ProfilePage, SupportPage } from './AccountPages';
@@ -242,9 +243,8 @@ export const ProviderPortal: React.FC<ProviderPortalProps> = ({ kind, me, onSign
         onMarkAllRead={() => markNotificationsRead()}
         onViewAllNotifications={() => go('notifications')}
         onSignOut={onSignOut}
-        onBackToSite={() => {
-          window.location.href = '/';
-        }}
+        websiteUrl="/"
+        profilePage="profile"
         banner={banner}
       >
         {body}
@@ -254,6 +254,7 @@ export const ProviderPortal: React.FC<ProviderPortalProps> = ({ kind, me, onSign
       <SessionNotesModal appointment={notesFor} onClose={() => setNotesFor(null)} />
       <MeetingLinkModal appointment={linkFor} onClose={() => setLinkFor(null)} />
       <TaskModal open={taskFor !== undefined} studentId={taskFor || undefined} onClose={() => setTaskFor(undefined)} />
+      <ChangePasswordGate onDone={toast} />
       <PlatformToaster />
 
       <div className="fixed bottom-5 right-5 z-[80] flex flex-col gap-2 items-end pointer-events-none">

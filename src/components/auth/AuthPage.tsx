@@ -605,6 +605,17 @@ const SignUpForm: React.FC<{ initialRole: SignupRole; onSwitchToSignIn: () => vo
           : 'Counsellor and mentor profiles are approved by the Maxicareer team before you can sign in.'}{' '}
         Maxicareer staff accounts are created by an administrator.
       </p>
+      <p className="text-[12.5px] text-[#7A869E]">
+        By creating an account you agree to our{' '}
+        <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#2563EB] hover:underline">
+          Terms of service
+        </a>{' '}
+        and{' '}
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-[#2563EB] hover:underline">
+          Privacy policy
+        </a>
+        .
+      </p>
     </form>
   );
 };

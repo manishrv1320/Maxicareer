@@ -13,7 +13,7 @@ import { FormError, StarRating, useAsyncAction } from '../workspace/kit';
 /* ------------------------------------------------------------------ */
 
 const FAQ: { q: string; a: string }[] = [
-  { q: 'How do I book a 1-on-1 session?', a: 'Open 1-on-1 sessions (or the Dashboard) and choose Book a session. Pick your mentor or counsellor and a time; once they confirm and share their meeting link, a Join button appears in Sessions and on your Calendar.' },
+  { q: 'How do I book a 1-on-1 session?', a: 'Open 1-on-1 sessions (or the Dashboard) and choose Book a session. Pick your mentor or counsellor (they appear once the Maxicareer team assigns them) and a time; once they confirm and share their meeting link, a Join button appears in Sessions and on your Calendar.' },
   { q: 'How do I meet the admin team?', a: 'Use "Meet admin team" in 1-on-1 sessions or on your Dashboard. Choose a date, time and topic and we will confirm by notification.' },
   { q: 'How do I submit an assignment?', a: 'Go to Tasks & assignments, choose Submit work on a task (or the button at the top), attach your file or link and send it. Your reviewer’s grade and feedback appear on the submission.' },
   { q: 'How do I pay for a service or renewal?', a: 'Every order creates an invoice in Invoices. Pay by UPI or bank transfer, then click "I have paid" and enter the transaction reference. We mark it paid after checking.' },

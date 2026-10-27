@@ -35,7 +35,7 @@ career roadmaps, 1-on-1 sessions, assignments, tests, payments and the public we
 - Personal dashboard with an assigned **mentor** and **counsellor**
 - Curriculum, tasks and file submissions
 - Timed online tests and certificates
-- Book **1-on-1 sessions** and join with one click
+- Book **1-on-1 sessions** with their assigned mentor and counsellor, **reschedule** and join with one click
 - Calendar, chat and events
 - Profile, resume, invoices and renewals
 
@@ -58,7 +58,7 @@ career roadmaps, 1-on-1 sessions, assignments, tests, payments and the public we
 - Approvals, applications, roadmaps
 - Assessments, curriculum, events
 - Payments, payouts, expenditure
-- Website CMS and careers page
+- Website CMS, careers page and **newsletter**
 - Staff roles, page access, audit log
 
 </td>
@@ -74,6 +74,8 @@ career roadmaps, 1-on-1 sessions, assignments, tests, payments and the public we
 | `/portal` | Counsellors & mentors | Their workspace (sign-ups wait for admin approval) |
 | `/admin` | Staff | Admin portal; pages shown depend on the staff role |
 | `/careers` | Everyone | Job and internship openings published from the admin portal |
+| `/events` | Everyone | Events an admin chose to show on the website |
+| `/privacy` · `/terms` · `/refund-policy` | Everyone | Privacy policy, terms of service, refund and cancellation policy (edited under Website > Policies) |
 
 <details>
 <summary><b>Student portal: all pages</b></summary>
@@ -100,11 +102,11 @@ Dashboard · Notifications · Calendar · My mentees · **1-on-1 sessions** (req
 
 | Area | Pages |
 | --- | --- |
-| People | **Students** (assign mentor and counsellor inline; filter by cohort, status, mentor, counsellor, program and registration date) · Counsellors · Approvals · User management · Page access |
+| People | **Students** (assign mentor and counsellor inline; filter by cohort, status, mentor, counsellor, program and registration date) · Counsellors · Approvals · User management (every account; new accounts and resets get a one-time password by email) · Page access |
 | Programs | Applications · Roadmaps · Programs & plans · Services · Curriculum & resources · Assessments · Events |
 | Operations | **Sessions** (schedule, confirm student requests, paste meeting links) · Feedback · Form submissions · Reports |
 | Finance | Payments (invoices, verification, payouts, renewals) · Expenditure |
-| Website | Homepage · Navigation · Calls to action · Contact page · Career page · Footer · Social links · SEO · Article covers |
+| Website | Homepage · Navigation · Calls to action · Contact page · Career page · Policies · **Newsletter** (footer sign-ups, write, test and send issues by email) · Footer · Social links · SEO · Article covers |
 | System | Notifications · Audit log · Settings (database and storage health, sample data) |
 
 </details>

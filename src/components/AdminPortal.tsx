@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, ChevronDown, ExternalLink, LogOut, PanelLeft, Menu, X, Search, AlertCircle, MessageCircle, Mail, Route, FileStack, Check } from 'lucide-react';
+import { Bell, ChevronDown, ExternalLink, LogOut, PanelLeft, Menu, X, Search, AlertCircle, MessageCircle, Mail, Route, FileStack, Check, UserRound } from 'lucide-react';
 import { DbStudent, MongoStats, StudentProfile, UserProfession } from '../types';
 import { BrandLogo } from './BrandLogo';
 import {
@@ -26,6 +26,8 @@ import {
 } from './admin/context';
 import {
   usePersistentState,
+  useDraft,
+  confirmLeave,
   useSharedCollection,
   useSharedRecord,
   useSharedValue,
@@ -39,7 +41,7 @@ import {
 } from './admin/lib';
 import { auth, SessionUser } from '../lib/api';
 import { useCareerStore } from '../hooks/useCareerStore';
-import { Button, Badge, Drawer, Modal, Field, Input, Select, Textarea, StepMeter, Avatar, cx } from './admin/ui';
+import { Button, Badge, Drawer, Modal, OneTimePasswordModal, Field, Input, Select, Textarea, StepMeter, Avatar, cx } from './admin/ui';
 import { Dashboard } from './admin/pages/Dashboard';
 import { Students, STATUS_LABEL, STATUS_TONE } from './admin/pages/Students';
 import { Roadmaps } from './admin/pages/Roadmaps';
@@ -53,11 +55,13 @@ import { Payments, Expenditure } from './admin/pages/Finance';
 import { Feedback } from './admin/pages/Feedback';
 import { Submissions } from './admin/pages/Submissions';
 import { CareerPage } from './admin/pages/Careers';
+import { Newsletter } from './admin/pages/Newsletter';
 
 export type { AdminSession } from './admin/context';
 
 interface AdminPortalProps {
-  onBackToSite: () => void;
+  /** Public website, opened in a new tab so the admin portal stays open. */
+  websiteUrl?: string;
   currentUserProfile?: StudentProfile | null;
   onStudentLogout?: () => void;
   onAdminAuthenticated?: (session: AdminSession) => void;
@@ -103,7 +107,7 @@ const PROFESSION_LABEL: Record<UserProfession, string> = {
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
-export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
+export const AdminPortal: React.FC<AdminPortalProps> = ({ websiteUrl = '/' }) => {
   const [hasMounted, setHasMounted] = useState(false);
   const [session, setSession] = useState<AdminSession | null>(null);
   const [greeting, setGreeting] = useState('Good evening');
@@ -200,6 +204,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
   const [studentPrefilter, setStudentPrefilter] = useState<{ cohort?: string; status?: string } | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [newLogin, setNewLogin] = useState(true);
+  const [issuedPassword, setIssuedPassword] = useState<{ email: string; password: string } | null>(null);
   const [newStudent, setNewStudent] = useState({ name: '', email: '', phone: '+91 ', city: '', profession: 'college' as UserProfession, institutionOrCompany: '', planName: 'Step-Next career program', planPrice: 15999, mentorAssigned: 'Unassigned', detail: '' });
 
   const sessionRef = useRef<AdminSession | null>(null);
@@ -229,7 +235,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
     [setNotifications]
   );
 
-  const go = useCallback(
+  /** Opens a page without asking about unsaved edits (the caller already did). */
+  const navigate = useCallback(
     (tab: AdminTab) => {
       setActiveTab(tab);
       setMobileNav(false);
@@ -238,6 +245,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
       if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
     },
     [setActiveTab]
+  );
+  const go = useCallback(
+    (tab: AdminTab) => {
+      if (confirmLeave()) navigate(tab);
+    },
+    [navigate]
   );
 
   /* ---------------- students API ---------------- */
@@ -293,7 +306,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
       if (data.success && data.data) {
         setStudents((prev) => [data.data, ...prev]);
         if (data.stats) setStats(data.stats);
-        return data.data as DbStudent;
+        return { student: data.data as DbStudent, login: data.login };
       }
     } catch {}
     return null;
@@ -365,6 +378,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
   /* ---------------- auth ---------------- */
 
   const handleLogout = async () => {
+    if (!confirmLeave()) return;
     addAudit('Access', 'Signed out', session?.email || '');
     await auth.logout().catch(() => {});
     resetSharedData();
@@ -404,6 +418,38 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
 
   const unread = notifications.filter((n) => !n.read).length;
   const selectedStudent = students.find((s) => s._id === selectedStudentId) || null;
+
+  // Status, mentor, counsellor and notes in the student drawer save with its Save button.
+  const studentSaved = useMemo(
+    () =>
+      selectedStudent && {
+        status: selectedStudent.status,
+        mentorAssigned: selectedStudent.mentorAssigned || 'Unassigned',
+        counselorAssigned: selectedStudent.counselorAssigned || 'Unassigned',
+        notes: selectedStudent.notes || '',
+      },
+    [selectedStudent]
+  );
+  const [studentEdits, setStudentEdits, studentDraft] = useDraft(studentSaved, selectedStudentId);
+  const closeStudent = () => {
+    if (studentDraft.dirty && !window.confirm(`Close without saving your changes for ${selectedStudent?.name || 'this student'}?`)) return;
+    setSelectedStudentId(null);
+  };
+  const saveStudentEdits = async () => {
+    if (!selectedStudent || !studentSaved || !studentEdits) return;
+    const s = selectedStudent;
+    const patch: Partial<DbStudent> = {};
+    if (studentEdits.status !== studentSaved.status) patch.status = studentEdits.status;
+    if (studentEdits.mentorAssigned !== studentSaved.mentorAssigned) patch.mentorAssigned = studentEdits.mentorAssigned;
+    if (studentEdits.counselorAssigned !== studentSaved.counselorAssigned) patch.counselorAssigned = studentEdits.counselorAssigned;
+    if (studentEdits.notes !== studentSaved.notes) patch.notes = studentEdits.notes;
+    await patchStudent(s._id, patch);
+    if (patch.status) addAudit('Students', 'Changed status', `${s.name} → ${STATUS_LABEL[patch.status]}`);
+    if (patch.mentorAssigned) addAudit('Students', 'Assigned mentor', `${s.name} → ${patch.mentorAssigned}`);
+    if (patch.counselorAssigned) addAudit('Students', 'Assigned counsellor', `${s.name} → ${patch.counselorAssigned}`);
+    if (patch.notes !== undefined) addAudit('Students', 'Updated notes', s.name);
+    toast(`Saved changes for ${s.name}.`);
+  };
 
   const jumpResults = useMemo(() => {
     const q = jump.trim().toLowerCase();
@@ -630,6 +676,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
         return <Expenditure />;
       case 'web-careers':
         return <CareerPage />;
+      case 'newsletter':
+        return <Newsletter />;
       case 'approvals':
         return <Approvals />;
       case 'audit':
@@ -637,7 +685,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
       case 'access':
         return <PageAccess />;
       case 'settings':
-        return <SettingsPage onLogout={handleLogout} onBackToSite={onBackToSite} />;
+        return <SettingsPage onLogout={handleLogout} websiteUrl={websiteUrl} />;
       default:
         if (activeTab.startsWith('web-')) return <Website key={activeTab} tab={activeTab} />;
         return <Dashboard greeting={greeting} />;
@@ -788,9 +836,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
                       <div className="text-[13.5px] font-semibold">{session.name}</div>
                       <div className="text-[12px] text-[#7A869E] truncate">{session.email}</div>
                     </div>
-                    <button type="button" onClick={() => { setUserMenu(false); onBackToSite(); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[13.5px] hover:bg-[#F3F6FB]">
-                      <ExternalLink className="w-4 h-4 text-[#7A869E]" /> View website
+                    <button type="button" onClick={() => go('settings')} className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[13.5px] hover:bg-[#F3F6FB]">
+                      <UserRound className="w-4 h-4 text-[#7A869E]" /> My profile
                     </button>
+                    <a href={websiteUrl} target="_blank" rel="noopener noreferrer" onClick={() => setUserMenu(false)} className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[13.5px] hover:bg-[#F3F6FB]">
+                      <ExternalLink className="w-4 h-4 text-[#7A869E]" /> View website
+                    </a>
                     <button type="button" onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[13.5px] text-[#B42F3B] hover:bg-[#FCEBEC]">
                       <LogOut className="w-4 h-4" /> Sign out
                     </button>
@@ -808,7 +859,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
         {/* Student drawer */}
         <Drawer
           open={!!selectedStudent}
-          onClose={() => setSelectedStudentId(null)}
+          onClose={closeStudent}
           title={selectedStudent?.name}
           subtitle={selectedStudent && <span className="mc-num">{selectedStudent.email}</span>}
           footer={
@@ -905,11 +956,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Field label="Status">
                   <Select
-                    value={selectedStudent.status}
-                    onChange={(e) => {
-                      patchStudent(selectedStudent._id, { status: e.target.value as DbStudent['status'] });
-                      addAudit('Students', 'Changed status', `${selectedStudent.name} → ${STATUS_LABEL[e.target.value as DbStudent['status']]}`);
-                    }}
+                    value={studentEdits?.status || selectedStudent.status}
+                    onChange={(e) => setStudentEdits((d) => d && { ...d, status: e.target.value as DbStudent['status'] })}
                   >
                     {Object.entries(STATUS_LABEL).map(([k, l]) => (
                       <option key={k} value={k}>
@@ -920,11 +968,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
                 </Field>
                 <Field label="Mentor">
                   <Select
-                    value={selectedStudent.mentorAssigned || 'Unassigned'}
-                    onChange={(e) => {
-                      patchStudent(selectedStudent._id, { mentorAssigned: e.target.value });
-                      addAudit('Students', 'Assigned mentor', `${selectedStudent.name} → ${e.target.value}`);
-                    }}
+                    value={studentEdits?.mentorAssigned || 'Unassigned'}
+                    onChange={(e) => setStudentEdits((d) => d && { ...d, mentorAssigned: e.target.value })}
                   >
                     <option>Unassigned</option>
                     {selectedStudent.mentorAssigned && selectedStudent.mentorAssigned !== 'Unassigned' && !mentorNames.includes(selectedStudent.mentorAssigned) && (
@@ -937,13 +982,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
                 </Field>
                 <Field label="Counsellor">
                   <Select
-                    value={selectedStudent.counselorAssigned || 'Unassigned'}
-                    onChange={(e) => {
-                      patchStudent(selectedStudent._id, { counselorAssigned: e.target.value });
-                      addAudit('Students', 'Assigned counsellor', `${selectedStudent.name} → ${e.target.value}`);
-                    }}
+                    value={studentEdits?.counselorAssigned || 'Unassigned'}
+                    onChange={(e) => setStudentEdits((d) => d && { ...d, counselorAssigned: e.target.value })}
                   >
                     <option>Unassigned</option>
+                    {selectedStudent.counselorAssigned && selectedStudent.counselorAssigned !== 'Unassigned' && !counsellorNames.includes(selectedStudent.counselorAssigned) && (
+                      <option>{selectedStudent.counselorAssigned}</option>
+                    )}
                     {counsellorNames.map((m) => (
                       <option key={m}>{m}</option>
                     ))}
@@ -982,7 +1027,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
                     <Route className="w-4 h-4 text-[#2563EB]" />
                     <span className="mc-display text-[15px] font-semibold">Roadmap</span>
                   </div>
-                  <Button size="sm" onClick={() => { setRoadmapFocus(selectedStudent._id); setSelectedStudentId(null); go('roadmaps'); }}>
+                  <Button size="sm" onClick={() => { if (!confirmLeave()) return; setRoadmapFocus(selectedStudent._id); setSelectedStudentId(null); navigate('roadmaps'); }}>
                     {studentRoadmap ? 'Edit roadmap' : 'Create roadmap'}
                   </Button>
                 </div>
@@ -1012,7 +1057,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
                     <FileStack className="w-4 h-4 text-[#6D4AE0]" />
                     <span className="mc-display text-[15px] font-semibold">Applications</span>
                   </div>
-                  <Button size="sm" onClick={() => { setSelectedStudentId(null); go('applications'); }}>
+                  <Button size="sm" onClick={() => { if (!confirmLeave()) return; setSelectedStudentId(null); navigate('applications'); }}>
                     Open applications
                   </Button>
                 </div>
@@ -1032,20 +1077,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
                 )}
               </section>
 
-              <Field label="Counsellor notes" hint="Saved when you click outside the box.">
+              <Field label="Counsellor notes">
                 <Textarea
-                  key={selectedStudent._id}
                   rows={4}
-                  defaultValue={selectedStudent.notes}
-                  onBlur={(e) => {
-                    if (e.target.value !== selectedStudent.notes) {
-                      patchStudent(selectedStudent._id, { notes: e.target.value });
-                      addAudit('Students', 'Updated notes', selectedStudent.name);
-                    }
-                  }}
+                  value={studentEdits?.notes || ''}
+                  onChange={(e) => setStudentEdits((d) => d && { ...d, notes: e.target.value })}
                   placeholder="Call summary, next steps, target universities, interview dates…"
                 />
               </Field>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {studentDraft.dirty && <span className="mr-auto text-[12.5px] font-medium text-[#94570A]">Unsaved changes</span>}
+                <Button onClick={studentDraft.reset} disabled={!studentDraft.dirty}>
+                  Cancel
+                </Button>
+                <Button variant="primary" icon={Check} onClick={saveStudentEdits} disabled={!studentDraft.dirty}>
+                  Save changes
+                </Button>
+              </div>
               <div className="flex items-center gap-2">
                 <Badge tone={STATUS_TONE[selectedStudent.status]} dot>
                   {STATUS_LABEL[selectedStudent.status]}
@@ -1070,10 +1118,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
                 variant="primary"
                 disabled={!newStudent.name.trim() || !newStudent.email.trim()}
                 onClick={async () => {
-                  const created = await createStudent({ ...newStudent, professionLabel: PROFESSION_LABEL[newStudent.profession], source: 'admin_manual', notes: 'Added from the admin portal.' });
+                  const created = await createStudent({ ...newStudent, professionLabel: PROFESSION_LABEL[newStudent.profession], source: 'admin_manual', notes: 'Added from the admin portal.', createLogin: newLogin });
                   if (created) {
-                    addAudit('Students', 'Added student', created.email);
-                    toast(`${created.name} added.`);
+                    const { student: added, login } = created;
+                    addAudit('Students', login?.created ? 'Added student with login' : 'Added student', added.email);
+                    if (login?.password) setIssuedPassword({ email: added.email, password: login.password });
+                    toast(
+                      !login
+                        ? `${added.name} added.`
+                        : !login.created
+                          ? `${added.name} added. ${added.email} already has a login, so no new password was sent.`
+                          : login.emailed
+                            ? `${added.name} added. Sign-in details with a one-time password were emailed to ${added.email}.`
+                            : `${added.name} added. The email couldn't be sent, so share the one-time password yourself.`
+                    );
                     setAddOpen(false);
                     setNewStudent({ ...newStudent, name: '', email: '', phone: '+91 ', city: '', institutionOrCompany: '', detail: '' });
                   } else toast("Couldn't add the student. Check the email and try again.", 'error');
@@ -1133,8 +1191,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToSite }) => {
             <Field label="Goal" className="sm:col-span-2">
               <Textarea rows={2} value={newStudent.detail} onChange={(e) => setNewStudent({ ...newStudent, detail: e.target.value })} placeholder="What do they want help with?" />
             </Field>
+            <label className="sm:col-span-2 flex items-start gap-2.5 text-[13.5px] text-[#26355A] cursor-pointer">
+              <input type="checkbox" checked={newLogin} onChange={(e) => setNewLogin(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#2563EB]" />
+              <span>
+                Create their student login and email them a one-time password
+                <span className="block text-[12.5px] text-[#7A869E]">They choose their own password when they first sign in. They can also sign in with an email code.</span>
+              </span>
+            </label>
           </div>
         </Modal>
+        <OneTimePasswordModal issued={issuedPassword} onClose={() => setIssuedPassword(null)} />
 
         {/* First sign-in with a one-time password */}
         <Modal

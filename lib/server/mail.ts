@@ -65,11 +65,11 @@ export async function pingMail(): Promise<{ ok: boolean; ms: number; via: 'smtp'
   }
 }
 
-export async function sendMail(opts: { to: string | string[]; subject: string; text: string; replyTo?: string; from?: string }): Promise<boolean> {
+export async function sendMail(opts: { to: string | string[]; subject: string; text: string; replyTo?: string; from?: string; headers?: Record<string, string> }): Promise<boolean> {
   if (smtpConfigured()) {
     const from = opts.from || defaultSender();
     try {
-      await smtp().sendMail({ from, to: opts.to, subject: opts.subject, text: opts.text, replyTo: opts.replyTo });
+      await smtp().sendMail({ from, to: opts.to, subject: opts.subject, text: opts.text, replyTo: opts.replyTo, headers: opts.headers });
       return true;
     } catch (err) {
       console.error('[mail] SMTP server rejected the email:', err);
@@ -87,7 +87,7 @@ export async function sendMail(opts: { to: string | string[]; subject: string; t
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: opts.to, subject: opts.subject, text: opts.text, reply_to: opts.replyTo }),
+      body: JSON.stringify({ from, to: opts.to, subject: opts.subject, text: opts.text, reply_to: opts.replyTo, headers: opts.headers }),
     });
     if (!res.ok) {
       console.error('[mail] Resend rejected the email:', res.status, await res.text().catch(() => ''));

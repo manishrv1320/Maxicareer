@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { NextRequest } from 'next/server';
-import { route, readJson, fail, ok } from '@/lib/server/http';
+import { route, readJson, fail, ok, appUrl } from '@/lib/server/http';
 import { col, COLLECTIONS, nowIso } from '@/lib/server/db';
 import { normaliseEmail, isValidEmail, rateLimit, limitKey, hashResetToken, type UserDoc } from '@/lib/server/auth';
 import { sendMail, supportSender, supportAddress, isMailConfigured } from '@/lib/server/mail';
@@ -8,19 +8,6 @@ import { sendMail, supportSender, supportAddress, isMailConfigured } from '@/lib
 export const dynamic = 'force-dynamic';
 
 const LINK_MINUTES = 30;
-
-/**
- * Public address for links in emails. Set APP_URL in production so a forged Host header
- * can never point a reset link at another site.
- */
-function appUrl(req: NextRequest) {
-  const fixed = process.env.APP_URL?.trim().replace(/\/+$/, '');
-  if (fixed) return fixed;
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-  if (!host) return req.nextUrl.origin;
-  const proto = req.headers.get('x-forwarded-proto') || (/^(localhost|127\.)/.test(host) ? 'http' : 'https');
-  return `${proto}://${host}`;
-}
 
 /**
  * "Forgot password": emails a one-time reset link from the support address.

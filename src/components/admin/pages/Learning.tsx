@@ -19,7 +19,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { useAdmin } from '../context';
-import { PageHeader, Panel, Button, IconButton, Badge, Empty, Segmented, Modal, Field, Input, Select, Textarea, SearchInput, Th, Td, Stat, cx, Tone } from '../ui';
+import { PageHeader, Panel, Button, IconButton, Badge, Empty, Segmented, Modal, Field, Input, Select, Textarea, SearchInput, Th, Td, Stat, Toggle, cx, Tone } from '../ui';
 import { useSharedCollection, uid, formatDate, downloadCsv, timeAgo, plural } from '../lib';
 import type { CurriculumModule, CurriculumLesson, ResourceItem, TestDef, TestQuestion, TestKind, Certificate, PlatformEvent, Cohort, EventAudience } from '../../../types/portal';
 import { COHORT_NAMES } from '../../../types/portal';
@@ -1074,6 +1074,14 @@ const EventEditor: React.FC<{ draft: PlatformEvent | null; onClose: () => void; 
         <Field label="Description" className="sm:col-span-2">
           <Textarea rows={3} value={ev.description} onChange={(e) => setEv({ ...ev, description: e.target.value })} />
         </Field>
+        <Field label="Website" className="sm:col-span-2">
+          <div className="flex items-start gap-3">
+            <Toggle checked={!!ev.public} onChange={(v) => setEv({ ...ev, public: v })} label="Show on the website's Events page" />
+            <span className="text-[13px] text-[#26355A] leading-snug">
+              Also show on the website's Events page, so anyone can see it{ev.mode === 'Online' ? ' and open the joining link' : ''}.
+            </span>
+          </div>
+        </Field>
         <Field label="Status" className="sm:col-span-2">
           <StatusToggle value={ev.status} onChange={(status) => setEv({ ...ev, status })} />
         </Field>
@@ -1115,11 +1123,16 @@ export const Events: React.FC = () => {
     <div className="space-y-5">
       <PageHeader
         title="Events"
-        description="Webinars, workshops, masterclasses and career fairs on students' and mentors' calendars."
+        description="Webinars, workshops, masterclasses and career fairs on students' and mentors' calendars. Turn on Website for an event to list it on the public Events page too."
         actions={
-          <Button variant="primary" icon={Plus} onClick={() => setEditing(blank())}>
-            New event
-          </Button>
+          <>
+            <a href="/events" target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-1.5 rounded-[10px] border border-[#D3DBE8] bg-white px-4 text-[13.5px] font-semibold text-[#0D1B3E] hover:border-[#B7C3D7]">
+              <ExternalLink className="w-4 h-4" /> View page
+            </a>
+            <Button variant="primary" icon={Plus} onClick={() => setEditing(blank())}>
+              New event
+            </Button>
+          </>
         }
       />
       <Segmented
@@ -1145,6 +1158,7 @@ export const Events: React.FC = () => {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[15px] font-semibold">{e.title}</span>
                   <Badge tone={EVENT_TONE[e.type]}>{e.type}</Badge>
+                  {e.public && <Badge tone="blue">On website</Badge>}
                   {e.status === 'Draft' && (
                     <Badge tone="marigold" dot>
                       Draft

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, Check, ChevronDown, ExternalLink, LogOut, Menu, PanelLeft, Search, X } from 'lucide-react';
+import { Bell, Check, ChevronDown, ExternalLink, LogOut, Menu, PanelLeft, Search, UserRound, X } from 'lucide-react';
 import { BrandLogo } from '../BrandLogo';
 import { Avatar, cx } from '../admin/ui';
 import { usePersistentState, timeAgo } from '../admin/lib';
@@ -47,7 +47,10 @@ interface WorkspaceShellProps<T extends string> {
   onMarkAllRead?: () => void;
   onViewAllNotifications?: () => void;
   onSignOut: () => void;
-  onBackToSite?: () => void;
+  /** Public website, opened in a new tab so the portal stays open. */
+  websiteUrl?: string;
+  /** Page opened by "My profile" in the account menu. */
+  profilePage?: T;
   /** localStorage key for the collapsed sidebar. */
   storageKey: string;
   /** Extra controls in the top bar (left of the bell). */
@@ -68,7 +71,8 @@ export function WorkspaceShell<T extends string>({
   onMarkAllRead,
   onViewAllNotifications,
   onSignOut,
-  onBackToSite,
+  websiteUrl,
+  profilePage,
   storageKey,
   topBarExtra,
   banner,
@@ -176,16 +180,17 @@ export function WorkspaceShell<T extends string>({
           ))}
         </nav>
         <div className="shrink-0 border-t border-white/[0.07] p-3 space-y-0.5">
-          {onBackToSite && (
-            <button
-              type="button"
-              onClick={onBackToSite}
-              title={narrow ? 'View website' : undefined}
+          {websiteUrl && (
+            <a
+              href={websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={narrow ? 'View website (opens in a new tab)' : undefined}
               className={cx('w-full flex items-center gap-3 rounded-[9px] text-[13.5px] font-medium text-[#C3D0EA] hover:text-white hover:bg-white/[0.05]', narrow ? 'justify-center h-10' : 'h-9 px-3')}
             >
               <ExternalLink className="w-[17px] h-[17px] text-[#8FA3CC]" />
               {!narrow && 'View website'}
-            </button>
+            </a>
           )}
           <button
             type="button"
@@ -382,17 +387,25 @@ export function WorkspaceShell<T extends string>({
                       <div className="text-[13.5px] font-semibold truncate">{user.name}</div>
                       <div className="text-[12px] text-[#7A869E] truncate">{user.email}</div>
                     </div>
-                    {onBackToSite && (
+                    {profilePage && (
                       <button
                         type="button"
-                        onClick={() => {
-                          setUserMenu(false);
-                          onBackToSite();
-                        }}
+                        onClick={() => go(profilePage)}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[13.5px] hover:bg-[#F3F6FB]"
+                      >
+                        <UserRound className="w-4 h-4 text-[#7A869E]" /> My profile
+                      </button>
+                    )}
+                    {websiteUrl && (
+                      <a
+                        href={websiteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setUserMenu(false)}
                         className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[13.5px] hover:bg-[#F3F6FB]"
                       >
                         <ExternalLink className="w-4 h-4 text-[#7A869E]" /> View website
-                      </button>
+                      </a>
                     )}
                     <button type="button" onClick={onSignOut} className="w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[13.5px] text-[#B42F3B] hover:bg-[#FCEBEC]">
                       <LogOut className="w-4 h-4" /> Sign out

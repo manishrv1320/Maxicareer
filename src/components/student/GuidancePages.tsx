@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BellPlus,
+  CalendarClock,
   CalendarPlus,
   CheckCheck,
   Clock,
@@ -17,6 +18,7 @@ import {
 import { PageHeader, Panel, Button, Badge, Empty, Segmented, Stat, Field, Input, Select, Textarea, Modal, Avatar, cx, Tone } from '../admin/ui';
 import { useStudent, Provider } from './context';
 import { CalendarBoard, CalendarItem, notesToItems } from '../workspace/CalendarBoard';
+import { RescheduleModal } from '../workspace/RescheduleModal';
 import { FormError, StarRating, fmtDay, fmtTime, isoOf, relativeDay, todayIso, useAsyncAction, to24h } from '../workspace/kit';
 import { uploadFile, pickFile } from '../../lib/api';
 import { platformStore } from '../../services/careerPlatformStore';
@@ -171,9 +173,10 @@ type Row =
   | { type: 'admin'; id: string; date: string; sort: string; item: AdminMeeting };
 
 export const SessionsPage: React.FC = () => {
-  const { state, store, mentor, counselor, providers, openBooking, openAdminMeeting, chatWith, toast } = useStudent();
+  const { state, store, mentor, counselor, providers, canBookWith, openBooking, openAdminMeeting, chatWith, toast } = useStudent();
   const [view, setView] = useState<'upcoming' | 'history' | 'requests'>('upcoming');
   const [rating, setRating] = useState<Appointment | null>(null);
+  const [moving, setMoving] = useState<Appointment | null>(null);
   const today = todayIso();
 
   const appointments = state.appointments;
@@ -287,8 +290,13 @@ export const SessionsPage: React.FC = () => {
               ) : (
                 <LinkPending />
               ))}
+            {!past && (
+              <Button size="sm" icon={CalendarClock} onClick={() => setMoving(a)}>
+                Reschedule
+              </Button>
+            )}
             <Button size="sm" icon={MessageSquare} onClick={() => chatWith(a.counselorId)}>
-              {past ? 'Message' : 'Message to reschedule'}
+              Message
             </Button>
             {past && a.status === 'completed' && !rated.has(a.id) && (
               <Button size="sm" icon={Star} onClick={() => setRating(a)}>
@@ -333,9 +341,11 @@ export const SessionsPage: React.FC = () => {
             <Button icon={ShieldCheck} onClick={openAdminMeeting}>
               Meet admin team
             </Button>
-            <Button variant="primary" icon={CalendarPlus} onClick={() => openBooking(mentor?.id || counselor?.id)}>
-              Book a session
-            </Button>
+            {(mentor || counselor) && (
+              <Button variant="primary" icon={CalendarPlus} onClick={() => openBooking(mentor?.id || counselor?.id)}>
+                Book a session
+              </Button>
+            )}
           </>
         }
       />
@@ -386,9 +396,11 @@ export const SessionsPage: React.FC = () => {
                     <Button size="sm" className="flex-1" onClick={() => chatWith(p.id)}>
                       Message
                     </Button>
-                    <Button size="sm" variant="primary" className="flex-1" onClick={() => openBooking(p.id)}>
-                      Book
-                    </Button>
+                    {canBookWith(p.id) && (
+                      <Button size="sm" variant="primary" className="flex-1" onClick={() => openBooking(p.id)}>
+                        Book
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -449,9 +461,11 @@ export const SessionsPage: React.FC = () => {
                     ) : (
                       <div className="flex items-center gap-2">
                         <Badge tone="rose">Declined</Badge>
-                        <Button size="sm" onClick={() => openBooking(r.counselorId)}>
-                          Pick another time
-                        </Button>
+                        {canBookWith(r.counselorId) && (
+                          <Button size="sm" onClick={() => openBooking(r.counselorId)}>
+                            Pick another time
+                          </Button>
+                        )}
                       </div>
                     )}
                   </li>
@@ -462,9 +476,16 @@ export const SessionsPage: React.FC = () => {
             <Empty
               icon={Video}
               title={view === 'upcoming' ? 'No upcoming sessions' : 'No past sessions yet'}
-              body={view === 'upcoming' ? "Pick a time with your mentor or counsellor. Once they confirm and share the meeting link, a Join button appears here." : 'Notes and next steps from each meeting will be kept here.'}
+              body={
+                view === 'history'
+                  ? 'Notes and next steps from each meeting will be kept here.'
+                  : mentor || counselor
+                    ? 'Pick a time with your mentor or counsellor. Once they confirm and share the meeting link, a Join button appears here.'
+                    : 'Once the Maxicareer team assigns your mentor and counsellor, you can book sessions with them here. Meanwhile you can request a meeting with the admin team.'
+              }
               action={
-                view === 'upcoming' && (
+                view === 'upcoming' &&
+                (mentor || counselor) && (
                   <Button variant="primary" icon={CalendarPlus} onClick={() => openBooking(mentor?.id || counselor?.id)}>
                     Book a session
                   </Button>
@@ -477,6 +498,12 @@ export const SessionsPage: React.FC = () => {
         </Panel>
       </div>
       <RateSessionModal appointment={rating} onClose={() => setRating(null)} />
+      <RescheduleModal
+        appointment={moving}
+        provider={(moving && [...state.counselors, ...state.mentors].find((p) => p.id === moving.counselorId)) || null}
+        onClose={() => setMoving(null)}
+        onDone={(message) => toast(message)}
+      />
     </div>
   );
 };
@@ -553,7 +580,7 @@ export const CalendarPage: React.FC = () => {
 /* ------------------------------------------------------------------ */
 
 export const ChatPage: React.FC = () => {
-  const { state, store, profile, providers, mentor, counselor, chatPartnerId, setChatPartnerId, openBooking, whatsappUrl } = useStudent();
+  const { state, store, profile, providers, mentor, counselor, chatPartnerId, setChatPartnerId, canBookWith, openBooking, whatsappUrl } = useStudent();
   const partner = providers.find((p) => p.id === chatPartnerId) || providers[0] || null;
   const conversationId = partner ? `${profile.id}_${partner.id}` : '';
   const thread = state.messages.filter((m) => m.conversationId === conversationId);
@@ -611,10 +638,7 @@ export const ChatPage: React.FC = () => {
           {providers.length === 0 ? (
             <div className="p-6 text-center">
               <MessageSquare className="w-6 h-6 mx-auto text-[#9AA5BB]" />
-              <p className="mt-2 text-[13px] text-[#5B6885]">Book a session or wait for your mentor to be assigned to start chatting.</p>
-              <Button size="sm" className="mt-3" onClick={() => openBooking()}>
-                Find an expert
-              </Button>
+              <p className="mt-2 text-[13px] text-[#5B6885]">Your mentor and counsellor appear here once the Maxicareer team assigns them.</p>
             </div>
           ) : (
             <ul className="max-h-[220px] lg:max-h-none overflow-y-auto">
@@ -650,9 +674,11 @@ export const ChatPage: React.FC = () => {
                   <div className="text-[14px] font-semibold truncate">{partner.name}</div>
                   <div className="text-[12px] text-[#7A869E] truncate">{partner.title}</div>
                 </div>
-                <Button size="sm" className="ml-auto" icon={CalendarPlus} onClick={() => openBooking(partner.id)}>
-                  Book
-                </Button>
+                {canBookWith(partner.id) && (
+                  <Button size="sm" className="ml-auto" icon={CalendarPlus} onClick={() => openBooking(partner.id)}>
+                    Book
+                  </Button>
+                )}
               </div>
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 max-h-[440px] bg-[#FBFCFE]">
                 {thread.length === 0 && <p className="text-center text-[13px] text-[#7A869E] py-10">Say hello to {partner.name.split(' ')[0]} to start the conversation.</p>}

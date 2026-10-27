@@ -64,6 +64,10 @@ export const COLLECTIONS = {
   careers: 'careers',
   curricula: 'curricula',
   resources: 'resources',
+  /** Emails that signed up for the newsletter on the website (or were added by an admin). */
+  newsletterSubscribers: 'newsletter_subscribers',
+  /** Newsletter issues: drafts and what was sent. */
+  newsletters: 'newsletters',
 } as const;
 
 export function isDbConfigured() {
@@ -124,6 +128,8 @@ async function ensureIndexes(db: Db) {
     db.collection(c.certificates).createIndex({ studentId: 1 }),
     db.collection(c.curricula).createIndex({ scope: 1, cohort: 1 }),
     db.collection(c.resources).createIndex({ scope: 1, cohort: 1 }),
+    db.collection(c.newsletterSubscribers).createIndex({ email: 1 }, { unique: true }),
+    db.collection(c.newsletterSubscribers).createIndex({ unsubscribeToken: 1 }),
   ]);
 }
 

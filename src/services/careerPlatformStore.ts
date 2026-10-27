@@ -32,6 +32,7 @@ import type {
   CalendarNoteKind,
 } from '../types/portal';
 import { apiGet, apiSend, auth, ApiError, SessionUser } from '../lib/api';
+import type { BookedSlot } from '../lib/slots';
 
 export type PlatformEnvironment = 'production' | 'demo';
 
@@ -297,6 +298,17 @@ class CareerPlatformStoreService {
 
   public updateAppointmentStatus(id: string, status: 'scheduled' | 'completed' | 'cancelled') {
     return this.act('updateAppointmentStatus', { id, status });
+  }
+
+  /** Moves an upcoming session to another ISO day and time slot; the other side is notified. */
+  public rescheduleAppointment(id: string, date: string, time: string) {
+    return this.act<Appointment>('rescheduleAppointment', { id, date, time });
+  }
+
+  /** Times already taken with a counsellor or mentor (no names), so they can't be booked twice. */
+  public async bookedSlots(counselorId: string): Promise<BookedSlot[]> {
+    const res = await apiSend<{ result: BookedSlot[] }>('/api/platform', { action: 'bookedSlots', payload: { counselorId } });
+    return res.result || [];
   }
 
   /** Pastes (or clears, with '') the video link for one upcoming session. */

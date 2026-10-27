@@ -144,6 +144,8 @@ export interface PlatformEvent {
   link?: string;
   location?: string;
   audience: EventAudience;
+  /** Also listed on the public website's /events page (with its join link). */
+  public?: boolean;
   host: string;
   status: 'Published' | 'Draft';
   createdAt: string;

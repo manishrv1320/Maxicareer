@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Mail, Plus, Pencil, Trash2, KeyRound, Copy, CalendarClock, Download, Briefcase, UserCog, Check, LogOut, ExternalLink, Database, Link2 } from 'lucide-react';
+import { Mail, Plus, Pencil, Trash2, KeyRound, CalendarClock, Download, Briefcase, UserCog, Check, LogOut, ExternalLink, Database, Link2, RefreshCw } from 'lucide-react';
 import { useAdmin, COHORT_LABEL, SessionItem } from '../context';
-import { PageHeader, Panel, Button, IconButton, Badge, Input, Textarea, Select, Field, Segmented, Stat, StepMeter, Avatar, Empty, Modal, Th, Td, cx } from '../ui';
-import { formatDate, inr, uid, daysUntil, DAY_MS, downloadCsv, useSharedCollection, readStore, writeStore, resetSharedData } from '../lib';
+import { PageHeader, Panel, Button, IconButton, Badge, Input, Textarea, Select, Field, Segmented, SearchInput, Stat, StepMeter, Avatar, Empty, Modal, OneTimePasswordModal, Th, Td, cx, Tone } from '../ui';
+import { formatDate, timeAgo, inr, uid, daysUntil, DAY_MS, downloadCsv, useSharedCollection, readStore, writeStore, resetSharedData } from '../lib';
 import { apiGet, apiSend } from '../../../lib/api';
 import { platformStore } from '../../../services/careerPlatformStore';
 import { CAREER_PROGRAMS_LIST } from '../../../data/portalData';
@@ -178,131 +178,246 @@ export const Counsellors: React.FC = () => {
 /* User management                                                     */
 /* ------------------------------------------------------------------ */
 
-interface ManagedUser {
+/** Any login on the platform, from /api/admin/accounts. */
+interface Account {
   id: string;
   name: string;
   email: string;
-  role: string;
-  /** Sent once to the server, which hashes it into a real login; never stored in the list. */
-  tempPassword?: string;
+  role: 'student' | 'counselor' | 'mentor' | 'staff';
+  staffRole?: 'Global admin' | 'Admin' | 'Content editor' | 'Counsellor' | 'Mentor';
+  status: 'active' | 'pending' | 'rejected' | 'disabled';
+  isDemo?: boolean;
   createdAt: string;
-  active?: boolean;
+  lastLoginAt?: string;
 }
 
-const withoutPassword = ({ tempPassword, ...u }: ManagedUser): ManagedUser => u;
+type AccountGroup = 'all' | 'admins' | 'counsellors' | 'mentors' | 'students';
 
-const makePassword = () => `MC-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6)}`;
+const ADMIN_ROLES = ['Global admin', 'Admin', 'Content editor'];
+
+const groupOf = (a: Account): Exclude<AccountGroup, 'all'> => {
+  if (a.staffRole && ADMIN_ROLES.includes(a.staffRole)) return 'admins';
+  if (a.role === 'counselor' || a.staffRole === 'Counsellor') return 'counsellors';
+  if (a.role === 'mentor' || a.staffRole === 'Mentor') return 'mentors';
+  return a.role === 'student' ? 'students' : 'admins';
+};
+
+const roleLabel = (a: Account) => a.staffRole || (a.role === 'counselor' ? 'Counsellor' : a.role === 'mentor' ? 'Mentor' : a.role === 'student' ? 'Student' : 'Staff');
+
+const ROLE_TONE: Record<string, Tone> = {
+  'Global admin': 'ink',
+  Admin: 'ink',
+  'Content editor': 'violet',
+  Counsellor: 'blue',
+  Mentor: 'mint',
+  Student: 'neutral',
+};
+
+const ACCOUNT_STATUS: Record<Exclude<Account['status'], 'active'>, { label: string; tone: Tone }> = {
+  pending: { label: 'Awaiting approval', tone: 'marigold' },
+  rejected: { label: 'Not approved', tone: 'rose' },
+  disabled: { label: 'Deactivated', tone: 'neutral' },
+};
+
+/** Long lists (thousands of students) are cut here; search narrows them. */
+const ACCOUNT_LIMIT = 200;
+
+/** The server emails new and reset passwords; it returns the password only if that failed. */
+interface Issued {
+  account: Account;
+  emailed?: boolean;
+  password?: string;
+}
 
 export const UserManagement: React.FC = () => {
-  const { addAudit } = useAdmin();
-  const [users, setUsers] = useSharedCollection<ManagedUser>('users');
+  const { addAudit, toast, go, session } = useAdmin();
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
+  const [group, setGroup] = useState<AccountGroup>('all');
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', email: '', role: 'Counsellor' });
   const [issued, setIssued] = useState<{ email: string; password: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const isGlobalAdmin = !session.staffRole || session.staffRole === 'Global admin';
+
+  const load = async () => {
+    try {
+      setAccounts((await apiGet<{ accounts: Account[] }>('/api/admin/accounts')).accounts);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not load accounts.', 'error');
+    }
+  };
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const list = useMemo(() => accounts || [], [accounts]);
+  const counts = useMemo(() => {
+    const c: Record<AccountGroup, number> = { all: list.length, admins: 0, counsellors: 0, mentors: 0, students: 0 };
+    list.forEach((a) => c[groupOf(a)]++);
+    return c;
+  }, [list]);
+  const shown = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return list.filter((a) => (group === 'all' || groupOf(a) === group) && (!term || `${a.name} ${a.email} ${roleLabel(a)}`.toLowerCase().includes(term)));
+  }, [list, group, q]);
+
+  /** Tells the admin where the one-time password went, or shows it if it couldn't be emailed. */
+  const reportPassword = (res: Issued, what: string) => {
+    if (res.password) setIssued({ email: res.account.email, password: res.password });
+    else toast(`${what} Sign-in details with a one-time password were emailed to ${res.account.email}.`);
+  };
+
+  const createStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = form.name.trim();
+    const email = form.email.trim().toLowerCase();
+    if (!name || !email) return;
+    if (list.some((a) => a.email === email && a.staffRole)) {
+      toast('Someone with that email already has a staff account.', 'error');
+      return;
+    }
+    setBusy('create');
+    try {
+      // The server creates the login, generates the one-time password and emails it.
+      const res = await apiSend<Issued>('/api/admin/accounts', { action: 'create', name, email, role: form.role });
+      addAudit('Users', 'Created account', `${form.role}: ${email}`);
+      reportPassword(res, 'Account created.');
+      setForm({ name: '', email: '', role: form.role });
+      load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Could not create the account.', 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const act = async (a: Account, action: 'reset' | 'disable' | 'enable') => {
+    if (action === 'disable' && !window.confirm(`Deactivate ${a.name}? They'll be signed out and can't sign in until you reactivate the account.`)) return;
+    if (action === 'reset' && !window.confirm(`Reset ${a.name}'s password? They'll be signed out and get a new one-time password by email.`)) return;
+    setBusy(a.id);
+    try {
+      const res = await apiSend<Issued>('/api/admin/accounts', { id: a.id, action });
+      setAccounts((prev) => prev && prev.map((x) => (x.id === a.id ? res.account : x)));
+      addAudit('Users', action === 'reset' ? 'Reset password' : action === 'disable' ? 'Deactivated account' : 'Reactivated account', a.email);
+      if (action === 'reset') reportPassword(res, 'Password reset.');
+      else toast(action === 'disable' ? `${a.name} can no longer sign in.` : `${a.name} can sign in again.`);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'That did not work.', 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
 
   return (
     <div className="space-y-5">
-      <PageHeader title="User management" description="Create staff accounts and issue one-time passwords. Staff change it on first sign-in. Counsellors and mentors also get a workspace at /portal." />
+      <PageHeader
+        title="User management"
+        description="Every account on the platform: admins, counsellors, mentors and students. New accounts and password resets get a one-time password by email, and people choose their own when they sign in."
+      />
       <Panel title="Add a staff member">
-        <form
-          className="grid grid-cols-1 md:grid-cols-[1fr_1fr_180px_auto] gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const email = form.email.trim().toLowerCase();
-            if (!form.name.trim() || !email) return;
-            if (users.some((u) => u.email === email)) {
-              setIssued(null);
-              window.alert('Someone with that email already has an account.');
-              return;
-            }
-            const password = makePassword();
-            setUsers([{ id: uid('u'), name: form.name.trim(), email, role: form.role, tempPassword: password, createdAt: new Date().toISOString(), active: true }, ...users.map(withoutPassword)]);
-            addAudit('Users', 'Created account', `${form.role}: ${email}`);
-            setIssued({ email, password });
-            setForm({ name: '', email: '', role: form.role });
-          }}
-        >
+        <form className="grid grid-cols-1 md:grid-cols-[1fr_1fr_180px_auto] gap-2" onSubmit={createStaff}>
           <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Full name" required aria-label="Full name" />
           <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@maxicareer.com" required aria-label="Email" />
           <Select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} aria-label="Role">
-            {['Counsellor', 'Mentor', 'Content editor', 'Admin'].map((r) => (
+            {['Counsellor', 'Mentor', 'Content editor', 'Admin', ...(isGlobalAdmin ? ['Global admin'] : [])].map((r) => (
               <option key={r}>{r}</option>
             ))}
           </Select>
-          <Button type="submit" variant="primary" icon={Plus}>
-            Create account
+          <Button type="submit" variant="primary" icon={Plus} disabled={busy === 'create'}>
+            {busy === 'create' ? 'Creating…' : 'Create account'}
           </Button>
         </form>
       </Panel>
-      <Panel flush title="Staff accounts" description={`${users.length} account${users.length === 1 ? '' : 's'}`}>
-        {users.length === 0 ? (
-          <Empty icon={UserCog} title="No staff accounts yet" body="Add counsellors and mentors above. They'll get a one-time password to sign in." />
+      <Panel
+        flush
+        title="All accounts"
+        description={accounts ? `${list.length} account${list.length === 1 ? '' : 's'}` : 'Loading…'}
+        actions={
+          <Button size="sm" icon={RefreshCw} onClick={load}>
+            Refresh
+          </Button>
+        }
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3 px-5 pb-4">
+          <Segmented
+            value={group}
+            onChange={setGroup}
+            options={[
+              { value: 'all' as const, label: 'All', count: counts.all },
+              { value: 'admins' as const, label: 'Admins & editors', count: counts.admins },
+              { value: 'counsellors' as const, label: 'Counsellors', count: counts.counsellors },
+              { value: 'mentors' as const, label: 'Mentors', count: counts.mentors },
+              { value: 'students' as const, label: 'Students', count: counts.students },
+            ]}
+          />
+          <SearchInput value={q} onChange={setQ} placeholder="Name, email or role" className="lg:ml-auto lg:w-64" />
+        </div>
+        {!accounts ? (
+          <div className="px-5 py-10 text-center text-[13px] text-[#5B6885] border-t border-[#EAEFF6]">Loading accounts…</div>
+        ) : shown.length === 0 ? (
+          <div className="border-t border-[#EAEFF6]">
+            <Empty icon={UserCog} title={list.length ? 'No accounts match' : 'No accounts yet'} body={list.length ? 'Try another group or search.' : 'Add a staff member above, or wait for students to sign up.'} />
+          </div>
         ) : (
           <ul className="divide-y divide-[#EAEFF6] border-t border-[#EAEFF6]">
-            {users.map((u) => (
-              <li key={u.id} className={cx('flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3.5', u.active === false && 'opacity-60')}>
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <Avatar name={u.name} />
-                  <div className="min-w-0">
-                    <div className="text-[14px] font-semibold text-[#0D1B3E] truncate">{u.name}</div>
-                    <div className="text-[12.5px] text-[#5B6885] truncate">
-                      {u.email} · added {formatDate(u.createdAt)}
+            {shown.slice(0, ACCOUNT_LIMIT).map((a) => {
+              const role = roleLabel(a);
+              const status = a.status === 'active' ? null : ACCOUNT_STATUS[a.status];
+              const isMe = a.email === session.email;
+              const locked = a.staffRole === 'Global admin' && !isGlobalAdmin;
+              return (
+                <li key={a.id} className={cx('flex flex-col sm:flex-row sm:items-center gap-3 px-5 py-3.5', a.status === 'disabled' && 'opacity-60')}>
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Avatar name={a.name} />
+                    <div className="min-w-0">
+                      <div className="text-[14px] font-semibold text-[#0D1B3E] truncate">{a.name}</div>
+                      <div className="text-[12.5px] text-[#5B6885] truncate">
+                        {a.email} · joined {formatDate(a.createdAt)}
+                        {a.lastLoginAt ? ` · last sign-in ${timeAgo(a.lastLoginAt)}` : ' · never signed in'}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <Badge tone={u.role === 'Admin' ? 'ink' : u.role === 'Content editor' ? 'violet' : 'blue'}>{u.role}</Badge>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    icon={KeyRound}
-                    onClick={() => {
-                      const password = makePassword();
-                      setUsers(users.map((x) => (x.id === u.id ? { ...withoutPassword(x), tempPassword: password } : withoutPassword(x))));
-                      addAudit('Users', 'Reset password', u.email);
-                      setIssued({ email: u.email, password });
-                    }}
-                  >
-                    Reset password
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={u.active === false ? 'secondary' : 'ghost'}
-                    onClick={() => {
-                      setUsers(users.map((x) => (x.id === u.id ? { ...withoutPassword(x), active: x.active === false } : withoutPassword(x))));
-                      addAudit('Users', u.active === false ? 'Reactivated account' : 'Deactivated account', u.email);
-                    }}
-                  >
-                    {u.active === false ? 'Reactivate' : 'Deactivate'}
-                  </Button>
-                </div>
-              </li>
-            ))}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {isMe && <Badge tone="blue">You</Badge>}
+                    {a.isDemo && <Badge>Sample</Badge>}
+                    {status && (
+                      <Badge tone={status.tone} dot>
+                        {status.label}
+                      </Badge>
+                    )}
+                    <Badge tone={ROLE_TONE[role] || 'blue'}>{role}</Badge>
+                  </div>
+                  <div className="flex gap-1 sm:w-[236px] sm:justify-end">
+                    {isMe || locked ? null : a.status === 'pending' || a.status === 'rejected' ? (
+                      <Button size="sm" onClick={() => go('approvals')}>
+                        Review in Approvals
+                      </Button>
+                    ) : (
+                      <>
+                        {a.status === 'active' && (
+                          <Button size="sm" icon={KeyRound} disabled={busy === a.id} onClick={() => act(a, 'reset')}>
+                            Reset password
+                          </Button>
+                        )}
+                        <Button size="sm" variant={a.status === 'disabled' ? 'secondary' : 'ghost'} disabled={busy === a.id} onClick={() => act(a, a.status === 'disabled' ? 'enable' : 'disable')}>
+                          {a.status === 'disabled' ? 'Reactivate' : 'Deactivate'}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
+        {shown.length > ACCOUNT_LIMIT && (
+          <p className="px-5 py-3 text-[12.5px] text-[#5B6885] border-t border-[#EAEFF6]">
+            Showing {ACCOUNT_LIMIT} of {shown.length}. Search or pick a group to find someone.
+          </p>
+        )}
       </Panel>
-      <Modal
-        open={!!issued}
-        onClose={() => {
-          setIssued(null);
-          setCopied(false);
-        }}
-        title="One-time password"
-        description={issued ? `For ${issued.email}. It's shown only once, so share it securely now.` : ''}
-        footer={<Button variant="primary" onClick={() => setIssued(null)}>Done</Button>}
-      >
-        <div className="flex items-center gap-2">
-          <div className="mc-num flex-1 rounded-[10px] bg-[#0D1B3E] text-white text-[18px] tracking-wider px-4 py-3 select-all">{issued?.password}</div>
-          <Button
-            icon={copied ? Check : Copy}
-            onClick={() => {
-              navigator.clipboard?.writeText(issued?.password || '');
-              setCopied(true);
-            }}
-          >
-            {copied ? 'Copied' : 'Copy'}
-          </Button>
-        </div>
-      </Modal>
+      <OneTimePasswordModal issued={issued} onClose={() => setIssued(null)} />
     </div>
   );
 };
@@ -928,7 +1043,7 @@ interface Health {
   mail: { configured: boolean; ok: boolean; ms: number; via: 'smtp' | 'resend' | 'none'; host?: string; user?: string; trimmed: string[]; error?: string };
 }
 
-export const SettingsPage: React.FC<{ onLogout: () => void; onBackToSite: () => void }> = ({ onLogout, onBackToSite }) => {
+export const SettingsPage: React.FC<{ onLogout: () => void; websiteUrl: string }> = ({ onLogout, websiteUrl }) => {
   const { session, platform, toast, addAudit, refreshStudents } = useAdmin();
   const isAdmin = !session.staffRole || session.staffRole === 'Global admin' || session.staffRole === 'Admin';
   const [health, setHealth] = useState<Health | null>(null);
@@ -1019,7 +1134,7 @@ export const SettingsPage: React.FC<{ onLogout: () => void; onBackToSite: () => 
   return (
     <div className="space-y-5 max-w-3xl">
       <PageHeader title="Settings" description="Your account and how this workspace connects to data." />
-      <Panel title="Your account">
+      <Panel title="My profile">
         <div className="flex items-center gap-4">
           <Avatar name={session.name} size={52} tone="blue" />
           <div className="flex-1">
@@ -1031,9 +1146,14 @@ export const SettingsPage: React.FC<{ onLogout: () => void; onBackToSite: () => 
           </div>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
-          <Button icon={ExternalLink} onClick={onBackToSite}>
-            View website
-          </Button>
+          <a
+            href={websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-1.5 rounded-[10px] font-semibold transition-colors h-10 px-4 text-[13.5px] bg-white text-[#0D1B3E] border border-[#D3DBE8] hover:border-[#B7C3D7] hover:bg-[#F8FAFD] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]/40"
+          >
+            <ExternalLink className="w-4 h-4" /> View website
+          </a>
           <Button variant="danger" icon={LogOut} onClick={onLogout}>
             Sign out
           </Button>

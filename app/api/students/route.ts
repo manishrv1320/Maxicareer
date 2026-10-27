@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import type { Filter } from 'mongodb';
-import { route, ok, fail, readJson, str } from '@/lib/server/http';
+import { route, ok, fail, readJson, str, appUrl } from '@/lib/server/http';
 import { col, COLLECTIONS } from '@/lib/server/db';
 import { getCurrentUser, requireStaff, canSeeStudentData, isValidEmail, normaliseEmail, rateLimit } from '@/lib/server/auth';
 import { StudentDoc, buildStudent, recordPublicLead, computeStats, sanitizeAdminPatch } from '@/lib/server/students';
 import { recordSubmission } from '@/lib/server/submissions';
+import { issueStudentLogin } from '@/lib/server/account';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +49,9 @@ export const POST = route(async (req: NextRequest) => {
     const patch = sanitizeAdminPatch(body);
     Object.assign(doc, patch, { source: 'admin_manual' });
     await (await col<StudentDoc>(COLLECTIONS.students)).insertOne(doc);
-    return ok({ message: 'Student added.', data: doc, stats: await computeStats() }, { status: 201 });
+    // Only when asked (the Add student form), so CSV imports never email anyone.
+    const login = body.createLogin === true ? await issueStudentLogin(doc, appUrl(req)) : undefined;
+    return ok({ message: 'Student added.', data: doc, login, stats: await computeStats() }, { status: 201 });
   }
 
   rateLimit(req, 'public-registration', 10, 15 * 60_000);

@@ -5,6 +5,8 @@ import { setProviderApproval, deliverBroadcast } from './platform';
 import { applyPaidInvoice } from './portal';
 import { notifyUser } from './notify';
 import { assertProviderNameFree } from './viewer';
+import { prepareSubscriber, prepareNewsletter } from './newsletter';
+import { generatePassword, emailFirstPassword } from './account';
 import { str, meetingUrl } from './http';
 
 /**
@@ -55,6 +57,9 @@ export const ADMIN_COLLECTIONS: Record<string, CollectionConfig> = {
   events: { name: COLLECTIONS.events, sort: { date: 1 } },
   feedback: { name: COLLECTIONS.feedback, sort: { createdAt: -1 }, read: canSeeStudentData, write: isAdmin },
   careers: { name: COLLECTIONS.careers, sort: { updatedAt: -1 }, write: canEditWebsite },
+  // Newsletter: subscribers' email addresses and the issues sent to them. Admins only.
+  subscribers: { name: COLLECTIONS.newsletterSubscribers, sort: { createdAt: -1 }, limit: 50000, read: isAdmin },
+  newsletters: { name: COLLECTIONS.newsletters, sort: { updatedAt: -1 }, read: isAdmin },
 };
 
 /** Single-value settings shared by every admin. */
@@ -87,7 +92,7 @@ export async function listCollection(key: string, user: UserDoc) {
     db.collection(cfg.name).find({}).sort(cfg.sort).limit(cfg.limit || 5000).toArray(),
     db.collection(COLLECTIONS.settings).findOne({ _id: `init:${key}` as any }),
   ]);
-  const items = docs.map(({ _id, _order, tempPassword, ...rest }: any) => ({ ...rest, id: String(_id) }));
+  const items = docs.map(({ _id, _order, tempPassword, unsubscribeToken, ...rest }: any) => ({ ...rest, id: String(_id) }));
   return { items, initialized: Boolean(init) || docs.length > 0 };
 }
 
@@ -110,6 +115,8 @@ export async function applyChanges(key: string, user: UserDoc, upserts: Item[], 
   // Side effects that connect admin actions to the rest of the platform
   if (key === 'sessions') for (const doc of clean) if (doc.meetingLink) doc.meetingLink = meetingUrl(doc.meetingLink);
   if (key === 'users') for (const doc of clean) await syncStaffAccount(doc, existing.get(doc._id), user);
+  if (key === 'subscribers') for (const doc of clean) await prepareSubscriber(doc, existing.get(doc._id));
+  if (key === 'newsletters') for (const doc of clean) prepareNewsletter(doc, existing.get(doc._id));
   if (key === 'approvals') {
     for (const doc of clean) {
       const prev = existing.get(doc._id);
@@ -276,6 +283,116 @@ async function disableStaffAccount(managedId: string) {
   if (!row?.userId) return;
   await db.collection<UserDoc>(COLLECTIONS.users).updateOne({ _id: row.userId }, { $set: { status: 'disabled' } });
   await destroyAllSessionsFor(row.userId);
+}
+
+/* ------------------------------------------------------------------ */
+/* Every account (User management)                                     */
+/* ------------------------------------------------------------------ */
+
+export interface AccountRow {
+  id: string;
+  name: string;
+  email: string;
+  role: UserDoc['role'];
+  staffRole?: StaffRole;
+  status: UserDoc['status'];
+  isDemo?: boolean;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+const toAccountRow = (u: UserDoc): AccountRow => ({
+  id: u._id,
+  name: u.name,
+  email: u.email,
+  role: u.role,
+  staffRole: u.staffRole,
+  status: u.status,
+  isDemo: u.isDemo || undefined,
+  createdAt: u.createdAt,
+  lastLoginAt: u.lastLoginAt,
+});
+
+/** Every login on the platform (students, counsellors, mentors and staff), newest first. */
+export async function listAccounts(): Promise<AccountRow[]> {
+  const db = await getDb();
+  const docs = await db
+    .collection<UserDoc>(COLLECTIONS.users)
+    .find({}, { projection: { passwordHash: 0 } })
+    .sort({ createdAt: -1 })
+    .limit(20000)
+    .toArray();
+  return docs.map(toAccountRow);
+}
+
+export type AccountAction = 'disable' | 'enable' | 'reset';
+
+/**
+ * Deactivates, reactivates or issues a one-time password for any account. Only staff get
+ * one-time passwords (the admin portal makes them choose a new one on sign-in); students,
+ * counsellors and mentors reset theirs with "Forgot password".
+ */
+/**
+ * What an admin learns after a one-time password is issued: whether it was emailed, and the
+ * password itself only when it couldn't be (so they can share it another way).
+ */
+export interface IssuedPassword {
+  account: AccountRow;
+  emailed?: boolean;
+  password?: string;
+}
+
+/**
+ * Deactivates or reactivates an account, or resets its password: a new one-time password is
+ * generated and emailed to the person, who chooses their own when they next sign in.
+ */
+export async function updateAccount(actor: UserDoc, id: string, action: AccountAction, baseUrl: string): Promise<IssuedPassword> {
+  const db = await getDb();
+  const users = db.collection<UserDoc>(COLLECTIONS.users);
+  const user = await users.findOne({ _id: id });
+  if (!user) throw new HttpError(404, 'That account no longer exists.');
+  if (user._id === actor._id) throw new HttpError(400, 'Manage your own account from Settings.');
+  if (user.staffRole === 'Global admin' && actor.staffRole !== 'Global admin') throw new HttpError(403, 'Only a global admin can change another global admin.');
+  if (user.status === 'pending' || user.status === 'rejected') throw new HttpError(400, 'Review this sign-up under Approvals first.');
+  const managed = db.collection(COLLECTIONS.managedUsers);
+
+  let issued: Omit<IssuedPassword, 'account'> = {};
+  if (action === 'reset') {
+    if (user.status !== 'active') throw new HttpError(400, 'Reactivate the account before resetting its password.');
+    const password = generatePassword();
+    await users.updateOne({ _id: user._id }, { $set: { passwordHash: await hashPassword(password), mustChangePassword: true } });
+    await managed.updateMany({ userId: user._id }, { $set: { passwordIssuedAt: nowIso() } });
+    const emailed = await emailFirstPassword({ email: user.email, name: user.name, password, baseUrl, reset: true, student: user.role === 'student' });
+    issued = { emailed, password: emailed ? undefined : password };
+  } else {
+    const status = action === 'disable' ? 'disabled' : 'active';
+    await users.updateOne({ _id: user._id }, { $set: { status } });
+    await managed.updateMany({ userId: user._id }, { $set: { active: status === 'active' } });
+  }
+  if (action !== 'enable') await destroyAllSessionsFor(user._id);
+  const updated = await users.findOne({ _id: user._id }, { projection: { passwordHash: 0 } });
+  return { account: toAccountRow(updated!), ...issued };
+}
+
+/**
+ * Creates a staff login from User management. The server generates the one-time password and
+ * emails it; counsellors and mentors also get their workspace profile.
+ */
+export async function createStaffAccount(actor: UserDoc, input: { name?: unknown; email?: unknown; role?: unknown }, baseUrl: string): Promise<IssuedPassword> {
+  const name = str(input.name, 120);
+  const email = normaliseEmail(input.email);
+  if (!name) throw new HttpError(400, 'Enter their full name.');
+  if (!isValidEmail(email)) throw new HttpError(400, 'Enter a valid email address.');
+  const role = str(input.role, 40);
+  const password = generatePassword();
+  const doc: Record<string, any> = { _id: newId('u'), name, email, role: STAFF_ROLE[role] ? role : 'Counsellor', tempPassword: password, createdAt: nowIso(), active: true };
+  // Checks permissions and duplicates, creates the login and removes the plain password from the row.
+  await syncStaffAccount(doc, undefined, actor);
+  const db = await getDb();
+  await db.collection(COLLECTIONS.managedUsers).insertOne(doc as any);
+  const emailed = await emailFirstPassword({ email, name, password, baseUrl });
+  const user = await db.collection<UserDoc>(COLLECTIONS.users).findOne({ _id: doc.userId }, { projection: { passwordHash: 0 } });
+  return { account: toAccountRow(user!), emailed, password: emailed ? undefined : password };
 }
 
 /* ------------------------------------------------------------------ */

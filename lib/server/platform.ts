@@ -182,6 +182,41 @@ async function getRelation(name: string, id: unknown) {
   return doc;
 }
 
+/** "September 22, 2026" or "2026-09-22" -> "2026-09-22", so stored session dates compare. */
+function dayKey(value: unknown) {
+  const s = String(value || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** "4:00 PM", "04:00 pm" or "16:00" -> "16:00", so slot times compare however they were typed. */
+function timeKey(value: unknown) {
+  const s = String(value || '').trim();
+  const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(s);
+  if (!m) return s.toUpperCase();
+  let h = Number(m[1]);
+  if (m[3]) h = (h % 12) + (m[3].toUpperCase() === 'PM' ? 12 : 0);
+  return `${String(h).padStart(2, '0')}:${m[2]}`;
+}
+
+/**
+ * Throws when the counsellor or mentor already has a session (or, with `requests`, a request
+ * waiting for an answer) at that day and time. `except` skips the record being moved.
+ */
+async function assertSlotFree(counselorId: string, date: string, time: string, opts: { requests?: boolean; except?: string[] } = {}) {
+  const day = dayKey(date);
+  const t = timeKey(time);
+  const except = { _id: { $nin: opts.except || [] } };
+  const [apts, reqs] = await Promise.all([
+    (await col<RelationDoc>(COLLECTIONS.appointments)).find({ counselorId, status: 'scheduled', ...except }).toArray(),
+    opts.requests ? (await col<RelationDoc>(COLLECTIONS.counselingRequests)).find({ counselorId, status: 'pending', ...except }).toArray() : Promise.resolve([] as RelationDoc[]),
+  ]);
+  const taken = apts.some((a) => dayKey(a.date) === day && timeKey(a.time) === t) || reqs.some((r) => dayKey(r.preferredDate) === day && timeKey(r.preferredTime) === t);
+  if (taken) throw new HttpError(409, 'That time is already booked. Please pick another slot.');
+}
+
 /** Rooms the platform made itself before providers pasted their own links. */
 const isAutoRoom = (link?: string) => !link || link.startsWith('https://meet.jit.si/maxicareer-');
 
@@ -522,6 +557,11 @@ const ACTIONS: Record<string, ActionFn> = {
       ));
     }
     if (!student) throw new HttpError(404, 'Student profile not found.');
+    // Signed-in students book only with the mentor and counsellor the Maxicareer team assigned them.
+    if (v.kind === 'student' && ![student.mentorAssigned, student.counselorAssigned].includes(provider.doc.name)) {
+      throw new HttpError(403, 'You can book sessions with your assigned mentor and counsellor. The Maxicareer team assigns them after your enrolment is confirmed.');
+    }
+    await assertSlotFree(provider.doc._id, preferredDate, preferredTime, { requests: true });
 
     const doc = {
       _id: newId('req'),
@@ -554,6 +594,7 @@ const ACTIONS: Record<string, ActionFn> = {
     const reqDoc = await getRelation(COLLECTIONS.counselingRequests, p.id);
     assertOwnsRelation(v, reqDoc.counselorId);
     if (reqDoc.status !== 'pending' && reqDoc.status !== 'rescheduled') throw new HttpError(409, 'This request has already been handled.');
+    await assertSlotFree(reqDoc.counselorId, reqDoc.preferredDate, reqDoc.preferredTime);
     await (await col(COLLECTIONS.counselingRequests)).updateOne({ _id: reqDoc._id as any }, { $set: { status: 'accepted' } });
     // The counsellor's own room; they can paste a different link for this session later.
     const meetingLink = (await findProvider(reqDoc.counselorId))?.doc.meetingLink || undefined;
@@ -651,6 +692,61 @@ const ACTIONS: Record<string, ActionFn> = {
       await (await col<StudentDoc>(COLLECTIONS.students)).updateOne({ _id: apt.studentId }, { $unset: { nextSessionDate: '' } });
       await notifyUser({ recipientId: apt.studentId, title: 'Session cancelled', description: `Your session on ${apt.date} at ${apt.time} was cancelled.`, category: 'Sessions', actionTab: 'sessions' });
     }
+  },
+
+  /** Times already taken with a counsellor or mentor, without names, so nobody books them twice. */
+  async bookedSlots(v, p) {
+    const counselorId = str(p.counselorId, 100);
+    if (!counselorId) return [];
+    const yesterday = dayKey(new Date(Date.now() - 86_400_000).toISOString());
+    const [apts, reqs] = await Promise.all([
+      (await col<RelationDoc>(COLLECTIONS.appointments)).find({ counselorId, status: 'scheduled' }).toArray(),
+      (await col<RelationDoc>(COLLECTIONS.counselingRequests)).find({ counselorId, status: 'pending' }).toArray(),
+    ]);
+    const mine = (studentId: string) => v.kind === 'student' && studentId === v.profileId;
+    return [
+      ...apts.map((a) => ({ date: dayKey(a.date), time: a.time, mine: mine(a.studentId) })),
+      ...reqs.map((r) => ({ date: dayKey(r.preferredDate), time: r.preferredTime, mine: mine(r.studentId) })),
+    ].filter((slot) => slot.date >= yesterday);
+  },
+
+  /**
+   * Moves an upcoming session to another day and time. The student picks from their mentor's
+   * or counsellor's open days and slots; the mentor or counsellor can pick any time. The other
+   * side is notified and the meeting link stays the same.
+   */
+  async rescheduleAppointment(v, p) {
+    const apt = await getRelation(COLLECTIONS.appointments, p.id);
+    const byStudent = v.kind === 'student' && apt.studentId === v.profileId;
+    if (!byStudent) assertOwnsRelation(v, apt.counselorId);
+    if (apt.status !== 'scheduled') throw new HttpError(409, 'Only upcoming sessions can be rescheduled.');
+    const iso = str(p.date, 10);
+    const time = str(p.time, 20);
+    if (!isIsoDay(iso) || !time) throw new HttpError(400, 'Choose a new date and time.');
+    if (iso < dayKey(new Date(Date.now() - 86_400_000).toISOString())) throw new HttpError(400, 'Choose a date from today onwards.');
+    if (dayKey(apt.date) === iso && timeKey(apt.time) === timeKey(time)) throw new HttpError(400, 'That is already the session time.');
+    const [y, m, d] = iso.split('-').map(Number);
+    if (byStudent) {
+      const provider = (await findProvider(apt.counselorId))?.doc as Record<string, any> | undefined;
+      const weekday = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long' });
+      if (provider?.blockedDates?.includes(iso)) throw new HttpError(400, `${apt.counselorName} is away that day. Please pick another date.`);
+      if (provider?.availabilityDays?.length && !provider.availabilityDays.includes(weekday)) throw new HttpError(400, `${apt.counselorName} takes sessions on ${provider.availabilityDays.join(', ')}.`);
+      if (provider?.availableTimeSlots?.length && !provider.availableTimeSlots.some((slot: string) => timeKey(slot) === timeKey(time))) throw new HttpError(400, 'Pick one of the listed time slots.');
+    }
+    await assertSlotFree(apt.counselorId, iso, time, { requests: true, except: [apt._id] });
+
+    const date = longDate(new Date(y, m - 1, d));
+    const was = `${apt.date} at ${apt.time}`;
+    await (await col(COLLECTIONS.appointments)).updateOne({ _id: apt._id as any }, { $set: { date, time, rescheduledAt: nowIso(), rescheduledBy: byStudent ? 'student' : 'provider' } });
+    await (await col<StudentDoc>(COLLECTIONS.students)).updateOne({ _id: apt.studentId }, { $set: { nextSessionDate: `${date} at ${time}` } });
+    const what = apt.topic || apt.counselingType;
+    if (byStudent) {
+      await notifyUser({ recipientId: apt.counselorId, title: `${apt.studentName} rescheduled a session`, description: `${what} is now on ${date} at ${time} (was ${was}).`, category: 'Sessions', actionTab: 'sessions' });
+    } else {
+      await notifyUser({ recipientId: apt.studentId, title: 'Session rescheduled', description: `${apt.counselorName} moved ${what} to ${date} at ${time} (was ${was}).`, category: 'Sessions', actionTab: 'sessions', actionText: 'View session' });
+    }
+    await notifyAdmins({ title: `Session rescheduled: ${apt.studentName}`, body: `With ${apt.counselorName} · now ${date} ${time}`, category: 'sessions', link: 'sessions' });
+    return strip({ ...apt, date, time });
   },
 
   /** The counsellor or mentor pastes (or clears) the video link for one upcoming session. */

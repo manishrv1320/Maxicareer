@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, Trash2, ArrowUp, ArrowDown, Upload, RotateCcw, Globe, Eye, EyeOff, Image as ImageIcon, Link2, Instagram, Linkedin, Youtube, Facebook, Twitter, MessageCircle, Send, Mail, Phone, MapPin, Clock } from 'lucide-react';
+import { Plus, Trash2, ArrowUp, ArrowDown, Upload, RotateCcw, Globe, Eye, EyeOff, ExternalLink, Image as ImageIcon, Link2, Instagram, Linkedin, Youtube, Facebook, Twitter, MessageCircle, Send, Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { useAdmin, AdminTab } from '../context';
-import { PageHeader, Panel, Button, IconButton, Badge, Input, Textarea, Select, Field, Toggle, Segmented, Empty, cx } from '../ui';
-import { formatDate, uid, useSharedValue } from '../lib';
+import { PageHeader, Panel, Button, IconButton, Badge, Input, Textarea, Select, Field, Toggle, Segmented, Empty, SaveBar, cx } from '../ui';
+import { formatDate, uid, useSharedValue, useDraft } from '../lib';
 import { uploadFile, pickFile } from '../../../lib/api';
 import { OFFICIAL_EMAIL, OFFICIAL_PHONE, OFFICIAL_PHONE_DIGITS, SECONDARY_EMAIL } from '../../../data/portalData';
+import { DEFAULT_POLICIES, POLICY_KEYS, POLICY_PATH, type Policy, type PolicyKey, type PolicySection } from '../../../data/policies';
+import { PolicyArticle } from '../../PolicyPage';
 
 /* ------------------------------------------------------------------ */
 /* Content model                                                       */
@@ -101,6 +103,8 @@ interface WebsiteContent {
     pages: { id: string; path: string; title: string; description: string; noindex: boolean }[];
   };
   social: { id: string; platform: string; url: string; visible: boolean; inFooter: boolean; inContact: boolean }[];
+  /** Privacy policy, terms and refund policy pages. */
+  policies: Record<PolicyKey, Policy>;
 }
 
 type SectionKey = keyof WebsiteContent;
@@ -184,6 +188,7 @@ const DEFAULT_CONTENT: WebsiteContent = {
     { id: 'so-3', platform: 'LinkedIn', url: '', visible: false, inFooter: true, inContact: true },
     { id: 'so-4', platform: 'YouTube', url: '', visible: false, inFooter: true, inContact: false },
   ],
+  policies: DEFAULT_POLICIES,
 };
 
 const SECTION_FOR_TAB: Record<string, { key: SectionKey; title: string; description: string }> = {
@@ -195,7 +200,11 @@ const SECTION_FOR_TAB: Record<string, { key: SectionKey; title: string; descript
   'web-articles': { key: 'articles', title: 'Article covers', description: 'Cover images and titles for blog posts and guides, checked at every size they are shown.' },
   'web-seo': { key: 'seo', title: 'SEO', description: 'How Maxicareer shows up on Google and when links are shared on WhatsApp, LinkedIn and X.' },
   'web-social': { key: 'social', title: 'Social links', description: 'Profiles shown as icons in the footer and on the contact page.' },
+  'web-policies': { key: 'policies', title: 'Policies', description: 'Privacy policy, terms of service and refund and cancellation policy, shown at /privacy, /terms and /refund-policy.' },
 };
+
+/** "26 October 2026", the format the policy pages show. */
+const todayLabel = () => new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
 const SOCIAL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   Instagram,
@@ -270,7 +279,7 @@ const Counter: React.FC<{ value: string; min: number; max: number }> = ({ value,
 export const Website: React.FC<{ tab: AdminTab }> = ({ tab }) => {
   const { addAudit, notify, toast } = useAdmin();
   const meta = SECTION_FOR_TAB[tab];
-  const [draft, setDraft] = useSharedValue<WebsiteContent>('website_draft', DEFAULT_CONTENT);
+  const [savedDraft, setSavedDraft] = useSharedValue<WebsiteContent>('website_draft', DEFAULT_CONTENT);
   const [published, setPublished] = useSharedValue<Partial<WebsiteContent>>('website_published', {});
   const [publishedAt, setPublishedAt] = useSharedValue<Partial<Record<SectionKey, string>>>('website_published_at', {});
   const [uploading, setUploading] = useState(false);
@@ -292,17 +301,34 @@ export const Website: React.FC<{ tab: AdminTab }> = ({ tab }) => {
   };
   const [articleFilter, setArticleFilter] = useState<'all' | 'Draft' | 'Published'>('all');
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [policyTab, setPolicyTab] = useState<PolicyKey>('privacy');
 
   // Older saved drafts may be missing newer sections: fill gaps from defaults.
-  const content: WebsiteContent = useMemo(() => ({ ...DEFAULT_CONTENT, ...draft }), [draft]);
+  const saved: WebsiteContent = useMemo(() => ({ ...DEFAULT_CONTENT, ...savedDraft }), [savedDraft]);
+  // Edits stay on this page until "Save draft" (or Publish) stores them.
+  const [content, setContent, { dirty: unsaved, reset: undoEdits }] = useDraft(saved);
   const key = meta.key;
   const section = content[key];
   const live = published[key];
   const dirty = JSON.stringify(section) !== JSON.stringify(live ?? null);
 
-  const set = <K extends SectionKey>(k: K, value: WebsiteContent[K]) => setDraft({ ...content, [k]: value });
+  const set = <K extends SectionKey>(k: K, value: WebsiteContent[K]) => setContent({ ...content, [k]: value });
+
+  /** Stores this section's draft, leaving the other sections as saved. */
+  const storeSection = (value: WebsiteContent[SectionKey]) => {
+    const next = { ...saved, [key]: value };
+    setSavedDraft(next);
+    setContent(next);
+  };
+
+  const saveDraft = () => {
+    storeSection(section);
+    addAudit('Website', 'Saved draft', meta.title);
+    toast(`${meta.title} draft saved. Publish when you're ready for visitors to see it.`);
+  };
 
   const publish = () => {
+    storeSection(section);
     setPublished({ ...published, [key]: section });
     const at = new Date().toISOString();
     setPublishedAt({ ...publishedAt, [key]: at });
@@ -313,11 +339,15 @@ export const Website: React.FC<{ tab: AdminTab }> = ({ tab }) => {
 
   const discard = () => {
     if (!window.confirm(live ? 'Discard your changes and go back to the live version?' : 'Reset this section to the original website content?')) return;
-    set(key, (live ?? DEFAULT_CONTENT[key]) as never);
+    storeSection((live ?? DEFAULT_CONTENT[key]) as never);
     addAudit('Website', live ? 'Discarded draft' : 'Reset to defaults', meta.title);
   };
 
-  const status = !publishedAt[key] ? (
+  const status = unsaved ? (
+    <Badge tone="rose" dot>
+      Not saved yet
+    </Badge>
+  ) : !publishedAt[key] ? (
     <Badge tone="neutral" dot>
       Not published from admin yet
     </Badge>
@@ -332,27 +362,119 @@ export const Website: React.FC<{ tab: AdminTab }> = ({ tab }) => {
   );
 
   const header = (
-    <PageHeader
-      meta={
-        <span className="inline-flex items-center gap-2">
-          <Globe className="w-3.5 h-3.5" /> Website
-        </span>
-      }
-      title={meta.title}
-      description={meta.description}
-      actions={
-        <>
-          {status}
-          <Button icon={RotateCcw} onClick={discard} disabled={!!live && !dirty}>
-            {live ? 'Discard changes' : 'Reset'}
-          </Button>
-          <Button variant="primary" onClick={publish} disabled={!!live && !dirty}>
-            Publish
-          </Button>
-        </>
-      }
-    />
+    <>
+      <PageHeader
+        meta={
+          <span className="inline-flex items-center gap-2">
+            <Globe className="w-3.5 h-3.5" /> Website
+          </span>
+        }
+        title={meta.title}
+        description={meta.description}
+        actions={
+          <>
+            {status}
+            <Button icon={RotateCcw} onClick={discard} disabled={!!live && !dirty}>
+              {live ? 'Discard changes' : 'Reset'}
+            </Button>
+            <Button onClick={saveDraft} disabled={!unsaved}>
+              {unsaved ? 'Save draft' : 'Draft saved'}
+            </Button>
+            <Button variant="primary" onClick={publish} disabled={!!live && !dirty}>
+              Publish
+            </Button>
+          </>
+        }
+      />
+      <SaveBar show={unsaved} message={`${meta.title}: changes aren't saved yet`} saveLabel="Save draft" onSave={saveDraft} onDiscard={undoEdits} />
+    </>
   );
+
+  /* ---------------- Policies ---------------- */
+  if (key === 'policies') {
+    const all = content.policies;
+    const pol = all[policyTab];
+    const upPol = (p: Partial<Policy>) => set('policies', { ...all, [policyTab]: { ...pol, ...p } });
+    const updSec = (id: string, p: Partial<PolicySection>) => upPol({ sections: pol.sections.map((s) => (s.id === id ? { ...s, ...p } : s)) });
+    const moveSec = (i: number, d: -1 | 1) => {
+      const next = [...pol.sections];
+      const j = i + d;
+      if (j < 0 || j >= next.length) return;
+      [next[i], next[j]] = [next[j], next[i]];
+      upPol({ sections: next });
+    };
+    return (
+      <div className="space-y-5">
+        {header}
+        <Segmented value={policyTab} onChange={setPolicyTab} options={POLICY_KEYS.map((k) => ({ value: k, label: all[k].title || 'Untitled' }))} />
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_480px] gap-4 items-start">
+          <div className="space-y-4">
+            <Panel
+              title={pol.title || 'Untitled'}
+              description={`Shown at ${POLICY_PATH[policyTab]}. Publish to put your changes live.`}
+              actions={
+                <a href={POLICY_PATH[policyTab]} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-[10px] border border-[#D3DBE8] bg-white px-3 text-[12.5px] font-semibold hover:border-[#B7C3D7]">
+                  <ExternalLink className="w-3.5 h-3.5" /> Live page
+                </a>
+              }
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_220px] gap-3">
+                  <Field label="Title">
+                    <Input value={pol.title} onChange={(e) => upPol({ title: e.target.value })} maxLength={120} />
+                  </Field>
+                  <Field
+                    label="Last updated"
+                    hint={
+                      <button type="button" onClick={() => upPol({ updated: todayLabel() })} className="font-semibold text-[#2563EB] hover:underline">
+                        Set to today
+                      </button>
+                    }
+                  >
+                    <Input value={pol.updated} onChange={(e) => upPol({ updated: e.target.value })} placeholder={todayLabel()} />
+                  </Field>
+                </div>
+                <Field label="Introduction">
+                  <Textarea rows={3} value={pol.intro} onChange={(e) => upPol({ intro: e.target.value })} />
+                </Field>
+              </div>
+            </Panel>
+            <Panel title="Sections" description='Plain text. Start a line with "- " for a bullet point, and leave a blank line between paragraphs.'>
+              <div className="space-y-3">
+                {pol.sections.map((s, i) => (
+                  <div key={s.id} className="rounded-[12px] border border-[#EAEFF6] bg-[#FBFCFE] p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="mc-num hidden sm:block w-5 text-center text-[12px] text-[#8C97AE]">{i + 1}</span>
+                      <Input value={s.heading} onChange={(e) => updSec(s.id, { heading: e.target.value })} placeholder="Section heading" className="flex-1 h-9 font-semibold" aria-label="Section heading" />
+                      <div className="flex items-center gap-0.5">
+                        <IconButton icon={ArrowUp} label="Move up" onClick={() => moveSec(i, -1)} disabled={i === 0} className="disabled:opacity-30" />
+                        <IconButton icon={ArrowDown} label="Move down" onClick={() => moveSec(i, 1)} disabled={i === pol.sections.length - 1} className="disabled:opacity-30" />
+                        <IconButton
+                          icon={Trash2}
+                          tone="danger"
+                          label="Remove section"
+                          onClick={() => window.confirm(`Remove "${s.heading || 'this section'}"?`) && upPol({ sections: pol.sections.filter((x) => x.id !== s.id) })}
+                        />
+                      </div>
+                    </div>
+                    <Textarea rows={Math.min(14, Math.max(4, s.body.split('\n').length + 1))} value={s.body} onChange={(e) => updSec(s.id, { body: e.target.value })} aria-label={`${s.heading || 'Section'} text`} />
+                  </div>
+                ))}
+                <Button size="sm" icon={Plus} onClick={() => upPol({ sections: [...pol.sections, { id: uid('sec'), heading: 'New section', body: '' }] })}>
+                  Add section
+                </Button>
+              </div>
+            </Panel>
+          </div>
+          <Panel title="Preview" className="xl:sticky xl:top-20" flush>
+            <div className="mx-5 mb-5 rounded-[12px] border border-[#DDE4EF] bg-[#F8FAFC] p-5 max-h-[75vh] overflow-y-auto">
+              <PolicyArticle policy={pol} />
+            </div>
+          </Panel>
+        </div>
+      </div>
+    );
+  }
 
   /* ---------------- Homepage ---------------- */
   if (key === 'home') {

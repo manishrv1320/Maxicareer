@@ -164,6 +164,11 @@ if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => values.forEach((v) => v.flush()));
 }
 
+/** Reloads a shared collection from the server (after the server changed it itself). */
+export function refreshShared(key: string) {
+  return collections.get(key)?.load();
+}
+
 /** Forget cached admin data (call on sign-out so the next admin starts clean). */
 export function resetSharedData() {
   values.forEach((v) => v.flush());
@@ -235,6 +240,60 @@ export function useSharedValue<T>(key: string, initial: T, opts: { enabled?: boo
     if (enabled) store!.load();
   }, [store, enabled]);
   return [value, store.set] as const;
+}
+
+/* ------------------------------------------------------------------ */
+/* Forms that save on a button                                         */
+/* ------------------------------------------------------------------ */
+
+const unsavedForms = new Set<symbol>();
+
+/** Registers unsaved edits so leaving the page (or closing the tab) asks first. */
+export function useUnsavedChanges(dirty: boolean) {
+  useEffect(() => {
+    if (!dirty) return;
+    const token = Symbol('unsaved');
+    unsavedForms.add(token);
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => {
+      unsavedForms.delete(token);
+      window.removeEventListener('beforeunload', warn);
+    };
+  }, [dirty]);
+}
+
+/** True when nothing is unsaved, or the user agrees to drop their edits. */
+export function confirmLeave() {
+  return unsavedForms.size === 0 || window.confirm('You have unsaved changes. Leave without saving?');
+}
+
+/**
+ * A local copy of a saved value for a form: edits stay here until the page saves them.
+ * While nothing has been edited it follows the saved value (first load, another admin's
+ * save). Changing `resetKey` (e.g. picking another student) starts again from the saved value.
+ */
+export function useDraft<T>(saved: T, resetKey?: unknown) {
+  const savedJson = JSON.stringify(saved ?? null);
+  const [state, setState] = useState({ base: savedJson, key: resetKey, value: saved });
+  let value = state.value;
+  if (state.key !== resetKey || (state.base !== savedJson && JSON.stringify(state.value ?? null) === state.base)) {
+    value = saved;
+    setState({ base: savedJson, key: resetKey, value: saved });
+  } else if (state.base !== savedJson) {
+    setState({ ...state, base: savedJson });
+  }
+  const dirty = JSON.stringify(value ?? null) !== savedJson;
+  useUnsavedChanges(dirty);
+
+  const setValue = useCallback((next: SetStateAction<T>) => {
+    setState((s) => ({ ...s, value: typeof next === 'function' ? (next as (p: T) => T)(s.value) : next }));
+  }, []);
+  const reset = () => setValue(saved);
+  return [value, setValue, { dirty, reset }] as const;
 }
 
 /* ------------------------------------------------------------------ */

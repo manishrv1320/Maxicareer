@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Bell, CheckCheck, Trash2, Users, FileStack, CalendarClock, CheckCircle2, Globe, Cpu, Send, Mail, MessageCircle, Smartphone, Clock, Eye, EyeOff, ArrowUpRight } from 'lucide-react';
 import { useAdmin, AppNotification, NotificationCategory, COHORT_LABEL, tabLabel } from '../context';
-import { PageHeader, Panel, Button, IconButton, Badge, Input, Textarea, Select, Field, Segmented, Toggle, Empty, Th, Td, cx } from '../ui';
-import { timeAgo, uid, useSharedValue, useSharedCollection, formatDate } from '../lib';
+import { PageHeader, Panel, Button, IconButton, Badge, Input, Textarea, Select, Field, Segmented, Toggle, Empty, SaveBar, Th, Td, cx } from '../ui';
+import { timeAgo, uid, useSharedValue, useSharedCollection, useDraft, formatDate } from '../lib';
 
 export const CATEGORY_META: Record<NotificationCategory, { label: string; icon: React.ComponentType<{ className?: string }>; cls: string }> = {
   students: { label: 'Students', icon: Users, cls: 'bg-[#E8F0FE] text-[#1D4FD7]' },
@@ -73,7 +73,8 @@ export const Notifications: React.FC = () => {
   const { notifications, setNotifications, students, go, addAudit, notify, toast, session, mentorOptions } = useAdmin();
   const [view, setView] = useState<'inbox' | 'compose' | 'sent' | 'prefs'>('inbox');
   const [filter, setFilter] = useState<'all' | 'unread' | NotificationCategory>('all');
-  const [prefs, setPrefs] = useSharedValue<NotificationPrefs>('notification_prefs', DEFAULT_PREFS);
+  const [savedPrefs, savePrefs] = useSharedValue<NotificationPrefs>('notification_prefs', DEFAULT_PREFS);
+  const [prefs, setPrefs, prefsDraft] = useDraft(savedPrefs);
   const [broadcasts, setBroadcasts] = useSharedCollection<Broadcast>('broadcasts', [], { refreshMs: 60_000 });
   const [draft, setDraft] = useState({ title: '', message: '', audience: 'all', studentEmail: '', channels: ['inapp'] as string[], when: 'now' as 'now' | 'later', sendAt: '' });
 
@@ -521,10 +522,21 @@ export const Notifications: React.FC = () => {
                 </Field>
               </div>
             </Panel>
-            <p className="text-[12.5px] text-[#7A869E]">Preferences save automatically for this browser.</p>
+            <p className="text-[12.5px] text-[#7A869E]">Preferences are shared by every admin. Click Save preferences to apply your changes.</p>
           </div>
         </div>
       )}
+      <SaveBar
+        show={prefsDraft.dirty}
+        message="Notification preferences aren't saved yet"
+        saveLabel="Save preferences"
+        onSave={() => {
+          savePrefs(prefs);
+          addAudit('Notifications', 'Updated preferences', '');
+          toast('Notification preferences saved.');
+        }}
+        onDiscard={prefsDraft.reset}
+      />
     </div>
   );
 };

@@ -16,6 +16,7 @@ export const STATUS_META: Record<string, { label: string; tone: Tone }> = {
 const MILESTONE_DOT: Record<string, string> = { done: 'bg-[#0F9F6E]', doing: 'bg-[#2563EB]', blocked: 'bg-[#D93F4C]', todo: 'bg-[#C4CEDD]' };
 const MILESTONE_LABEL: Record<string, string> = { done: 'Done', doing: 'In progress', blocked: 'Blocked', todo: 'To do' };
 
+/** The assigned mentor or counsellor. Until one is assigned it only says so (no browsing other experts). */
 const PersonCard: React.FC<{ role: string; person: Provider | null; empty: string }> = ({ role, person, empty }) => {
   const { chatWith, openBooking } = useStudent();
   return (
@@ -40,19 +41,12 @@ const PersonCard: React.FC<{ role: string; person: Provider | null; empty: strin
           </div>
         </>
       ) : (
-        <>
-          <div className="mt-3 flex items-center gap-3">
-            <span className="h-12 w-12 rounded-[12px] border border-dashed border-[#C4CEDD] flex items-center justify-center text-[#9AA5BB]">
-              <Users className="w-5 h-5" />
-            </span>
-            <p className="text-[13px] text-[#5B6885] leading-snug">{empty}</p>
-          </div>
-          <div className="mt-auto pt-4">
-            <Button size="sm" onClick={() => openBooking()} className="w-full">
-              Browse experts
-            </Button>
-          </div>
-        </>
+        <div className="mt-3 flex items-center gap-3">
+          <span className="h-12 w-12 rounded-[12px] border border-dashed border-[#C4CEDD] flex items-center justify-center text-[#9AA5BB]">
+            <Users className="w-5 h-5" />
+          </span>
+          <p className="text-[13px] text-[#5B6885] leading-snug">{empty}</p>
+        </div>
       )}
     </Panel>
   );
@@ -109,9 +103,11 @@ export const DashboardPage: React.FC = () => {
         }
         actions={
           <>
-            <Button icon={CalendarPlus} variant="primary" onClick={() => openBooking(mentor?.id || counselor?.id)}>
-              Book a session
-            </Button>
+            {(mentor || counselor) && (
+              <Button icon={CalendarPlus} variant="primary" onClick={() => openBooking(mentor?.id || counselor?.id)}>
+                Book a session
+              </Button>
+            )}
             <Button icon={ChevronRight} onClick={() => go('tasks')}>
               My tasks
             </Button>
@@ -242,23 +238,30 @@ export const DashboardPage: React.FC = () => {
           <Panel title="Book a meeting" description="With your proctors or the Maxicareer team.">
             <div className="space-y-2">
               {[
-                { who: 'Mentor', person: mentor },
-                { who: 'Counsellor', person: counselor },
-              ].map(({ who, person }) => (
-                <button
-                  key={who}
-                  type="button"
-                  onClick={() => openBooking(person?.id)}
-                  className="w-full flex items-center gap-3 rounded-[12px] border border-[#DDE4EF] px-3 py-2.5 text-left hover:border-[#2563EB] hover:bg-[#F7F9FC]"
-                >
-                  {person?.avatarUrl ? <img src={person.avatarUrl} alt="" className="h-9 w-9 rounded-[10px] object-cover" /> : <Avatar name={person?.name || who} size={36} />}
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-[13.5px] font-semibold truncate">{person ? person.name : `Find a ${who.toLowerCase()}`}</span>
-                    <span className="block text-[12px] text-[#7A869E]">{person ? `Your ${who.toLowerCase()}` : 'Browse the directory'}</span>
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-[#8C97AE]" />
-                </button>
-              ))}
+                { who: 'mentor', person: mentor },
+                { who: 'counsellor', person: counselor },
+              ].map(({ who, person }) =>
+                person ? (
+                  <button
+                    key={who}
+                    type="button"
+                    onClick={() => openBooking(person.id)}
+                    className="w-full flex items-center gap-3 rounded-[12px] border border-[#DDE4EF] px-3 py-2.5 text-left hover:border-[#2563EB] hover:bg-[#F7F9FC]"
+                  >
+                    {person.avatarUrl ? <img src={person.avatarUrl} alt="" className="h-9 w-9 rounded-[10px] object-cover" /> : <Avatar name={person.name} size={36} />}
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[13.5px] font-semibold truncate">{person.name}</span>
+                      <span className="block text-[12px] text-[#7A869E]">Your {who}</span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-[#8C97AE]" />
+                  </button>
+                ) : null
+              )}
+              {!mentor && !counselor && (
+                <p className="rounded-[12px] border border-dashed border-[#C4CEDD] px-3 py-2.5 text-[12.5px] text-[#5B6885]">
+                  Your mentor and counsellor appear here once the Maxicareer team assigns them.
+                </p>
+              )}
               <button type="button" onClick={openAdminMeeting} className="w-full flex items-center gap-3 rounded-[12px] border border-[#DDE4EF] px-3 py-2.5 text-left hover:border-[#2563EB] hover:bg-[#F7F9FC]">
                 <span className="h-9 w-9 rounded-[10px] bg-[#0D1B3E] text-white flex items-center justify-center">
                   <ShieldCheck className="w-4 h-4" />

@@ -23,6 +23,19 @@ export function route<C = unknown>(fn: Handler<C>): Handler<C> {
   };
 }
 
+/**
+ * Public address for links in emails. Set APP_URL in production so a forged Host header
+ * can never point a link at another site.
+ */
+export function appUrl(req: NextRequest) {
+  const fixed = process.env.APP_URL?.trim().replace(/\/+$/, '');
+  if (fixed) return fixed;
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+  if (!host) return req.nextUrl.origin;
+  const proto = req.headers.get('x-forwarded-proto') || (/^(localhost|127\.)/.test(host) ? 'http' : 'https');
+  return `${proto}://${host}`;
+}
+
 export function ok(data: Record<string, unknown> = {}, init?: ResponseInit) {
   return NextResponse.json({ success: true, ...data }, init);
 }

@@ -40,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'addon-services', label: 'Services', href: '#addon-services' },
     { id: 'about', label: 'About', href: '#about' },
     { id: 'why-us', label: 'Why Us', href: '#why-us' },
+    { id: 'events', label: 'Events', href: '/events' },
     { id: 'contact', label: 'Contact', href: '#contact' },
   ];
 
@@ -117,7 +118,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   key={link.id}
                   id={`nav-link-${link.id}`}
                   href={link.href}
-                  onClick={(e) => handleNavClick(e, link.href)}
+                  onClick={link.href.startsWith('#') ? (e) => handleNavClick(e, link.href) : undefined}
                   className={`relative px-2.5 xl:px-3 py-1.5 xl:py-2 text-xs xl:text-sm font-semibold transition-colors duration-200 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg group ${
                     isActive ? 'text-[#2563EB]' : 'text-slate-600 hover:text-[#0F172A]'
                   }`}
@@ -233,7 +234,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     key={link.id}
                     id={`mobile-nav-${link.id}`}
                     href={link.href}
-                    onClick={(e) => handleNavClick(e, link.href)}
+                    onClick={link.href.startsWith('#') ? (e) => handleNavClick(e, link.href) : undefined}
                     className={`px-4 py-3 rounded-xl text-base font-semibold transition-all duration-200 flex items-center justify-between active:scale-[0.98] ${
                       isActive
                         ? 'text-[#2563EB] bg-blue-50/90 font-bold'

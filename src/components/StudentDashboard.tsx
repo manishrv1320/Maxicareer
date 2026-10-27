@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { StudentProfile } from '../types';
 import { OFFICIAL_PHONE_DIGITS } from '../data/portalData';
 import { CounselorDirectoryModal } from './counseling/CounselorDirectoryModal';
+import { ChangePasswordGate } from './workspace/ChangePasswordGate';
 import { PlatformToaster } from './PlatformToaster';
 import { useCareerStore } from '../hooks/useCareerStore';
 import { WorkspaceShell, ShellNavGroup } from './workspace/WorkspaceShell';
@@ -40,7 +41,6 @@ import { SupportPage, FeedbackPage, TutorialsPage } from './student/HelpPages';
 interface StudentDashboardProps {
   profile: StudentProfile;
   onLogout: () => void;
-  onReturnToSite: () => void;
   onSwitchProfile?: (profile: StudentProfile) => void;
 }
 
@@ -49,7 +49,7 @@ export type StudentDashboardTab = StudentPage;
 const PAGE_KEY = 'maxicareer_student_page';
 
 /** The student portal: a vertical-menu workspace like the admin portal. */
-export const StudentDashboard: React.FC<StudentDashboardProps> = ({ profile, onLogout, onReturnToSite }) => {
+export const StudentDashboard: React.FC<StudentDashboardProps> = ({ profile, onLogout }) => {
   const store = useCareerStore();
   const { state, updateStudentProgress, markNotificationsRead } = store;
 
@@ -112,6 +112,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ profile, onL
     // Assigned people first.
     return list.sort((a, b) => Number(b.id === mentor?.id || b.id === counselor?.id) - Number(a.id === mentor?.id || a.id === counselor?.id));
   }, [directory, state.counselingRequests, state.appointments, state.followUpTasks, state.assignments, state.messages, mentor, counselor]);
+
+  // Students book only with the mentor and counsellor the Maxicareer team assigned them.
+  const bookableIds = [mentor?.id, counselor?.id].filter((id): id is string => Boolean(id));
+  const canBookWith = (id?: string) => Boolean(id && bookableIds.includes(id));
 
   /* ---------------- curriculum ---------------- */
 
@@ -209,12 +213,16 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ profile, onL
     mentor,
     counselor,
     providers,
+    canBookWith,
     modules,
     lessonIds,
     completedLessonIds,
     toggleLesson,
     curriculumProgress,
-    openBooking: (providerId) => setBookingFor(providerId ?? null),
+    openBooking: (providerId) => {
+      if (!bookableIds.length) return;
+      setBookingFor(canBookWith(providerId) ? providerId : bookableIds.length === 1 ? bookableIds[0] : null);
+    },
     openAdminMeeting: () => setAdminMeetingOpen(true),
     chatWith: (providerId) => {
       setChatPartnerId(providerId);
@@ -298,7 +306,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ profile, onL
         onMarkAllRead={() => markNotificationsRead()}
         onViewAllNotifications={() => go('notifications')}
         onSignOut={onLogout}
-        onBackToSite={onReturnToSite}
+        websiteUrl="/"
+        profilePage="profile"
         banner={banner}
         topBarExtra={
           <a
@@ -319,9 +328,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({ profile, onL
         onClose={() => setBookingFor(undefined)}
         currentUser={profile}
         initialCounselorId={bookingFor || undefined}
+        allowedIds={bookableIds}
         onBookSuccess={() => toast('Request sent. You will be notified when it is confirmed.')}
       />
       <AdminMeetingModal open={adminMeetingOpen} onClose={() => setAdminMeetingOpen(false)} />
+      <ChangePasswordGate onDone={toast} />
       <PlatformToaster />
 
       <div className="fixed bottom-5 right-5 z-[80] flex flex-col gap-2 items-end pointer-events-none">

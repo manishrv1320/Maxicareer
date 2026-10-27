@@ -48,13 +48,16 @@ export interface StudentCtx {
   toast: (message: string, tone?: 'default' | 'error') => void;
   mentor: Provider | null;
   counselor: Provider | null;
-  /** Everyone the student may message or book (assigned + worked with). */
+  /** Everyone the student may message (assigned + worked with). */
   providers: Provider[];
+  /** True for the assigned mentor or counsellor: students book only with them. */
+  canBookWith: (providerId?: string) => boolean;
   modules: CurriculumModule[];
   lessonIds: string[];
   completedLessonIds: string[];
   toggleLesson: (id: string) => void;
   curriculumProgress: number;
+  /** Opens booking for an assigned mentor/counsellor; does nothing until one is assigned. */
   openBooking: (providerId?: string) => void;
   openAdminMeeting: () => void;
   chatWith: (providerId: string) => void;

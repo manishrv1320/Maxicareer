@@ -27,6 +27,7 @@ import type { Counselor, Mentor, Appointment } from '../../types/counselor';
 import { COHORT_NAMES } from '../../types/portal';
 import { Fact, FileLink, StarRating, fmtDay, fmtTime, isoOf, relativeDay, to24h, todayIso, daysFromToday, isMeetingLink, MEETING_LINK_HELP } from '../workspace/kit';
 import { useProvider, isAssignedTo, isUpcoming, needsNotes } from './context';
+import { RescheduleModal } from '../workspace/RescheduleModal';
 import { MenteeStatus } from './OverviewPages';
 import { ModuleModal, ResourceModal } from './modals';
 
@@ -431,7 +432,8 @@ export const MenteeDrawer: React.FC<{ studentId: string | null; onClose: () => v
 type SessionView = 'requests' | 'upcoming' | 'notes' | 'completed' | 'cancelled';
 
 export const SessionsPage: React.FC = () => {
-  const { state, store, toast, requests, appointments, notes, sessionMinutes, writeNotes, editLink, chatWith, openMentee, go } = useProvider();
+  const { me, state, store, toast, requests, appointments, notes, sessionMinutes, writeNotes, editLink, chatWith, openMentee, go } = useProvider();
+  const [moving, setMoving] = useState<Appointment | null>(null);
   const today = todayIso();
   const pending = requests.filter((r) => r.status === 'pending');
   const [view, setView] = useState<SessionView>(pending.length ? 'requests' : 'upcoming');
@@ -516,9 +518,14 @@ export const SessionsPage: React.FC = () => {
                   Write notes
                 </Button>
                 {a.status === 'scheduled' && (
-                  <Button size="sm" variant="ghost" onClick={() => cancel(a)}>
-                    Didn't happen
-                  </Button>
+                  <>
+                    <Button size="sm" icon={CalendarClock} onClick={() => setMoving(a)}>
+                      Reschedule
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => cancel(a)}>
+                      Didn't happen
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -594,6 +601,9 @@ export const SessionsPage: React.FC = () => {
                   <Button size="sm" icon={FileText} onClick={() => writeNotes(a)}>
                     Complete & notes
                   </Button>
+                  <Button size="sm" icon={CalendarClock} onClick={() => setMoving(a)}>
+                    Reschedule
+                  </Button>
                   <IconButton icon={MessageSquare} label="Message" onClick={() => chatWith(a.studentId)} />
                   <Button size="sm" variant="ghost" onClick={() => cancel(a)}>
                     Cancel
@@ -655,6 +665,7 @@ export const SessionsPage: React.FC = () => {
           ))}
         </div>
       )}
+      <RescheduleModal appointment={moving} provider={me} anyTime onClose={() => setMoving(null)} onDone={(message) => toast(message)} />
     </div>
   );
 };

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Route, ArrowUp, ArrowDown, Trash2, Bell, RotateCcw, Pencil, Copy, Check, Circle, CircleDot, Ban } from 'lucide-react';
 import { useAdmin, COHORT_LABEL, roadmapProgress, Milestone, MilestoneStatus, RoadmapTemplate, StudentRoadmap } from '../context';
-import { PageHeader, Panel, Button, IconButton, Badge, Input, Textarea, Select, Field, Segmented, SearchInput, StepMeter, Avatar, Empty, Modal, cx } from '../ui';
-import { uid, formatDate, daysUntil } from '../lib';
+import { PageHeader, Panel, Button, IconButton, Badge, Input, Textarea, Select, Field, Segmented, SearchInput, StepMeter, Avatar, Empty, Modal, SaveBar, cx } from '../ui';
+import { uid, formatDate, daysUntil, useDraft, confirmLeave } from '../lib';
 
 const STATUS_META: Record<MilestoneStatus, { label: string; icon: React.ComponentType<{ className?: string }>; cls: string }> = {
   todo: { label: 'Not started', icon: Circle, cls: 'text-[#8C97AE] border-[#D3DBE8] bg-white' },
@@ -45,7 +45,8 @@ export const Roadmaps: React.FC = () => {
   }, [students, query, listFilter, studentRoadmaps]);
 
   const student = students.find((s) => s._id === selectedId) || null;
-  const roadmap = student ? studentRoadmaps[student._id] : undefined;
+  // Edits to the open roadmap stay here until "Save roadmap".
+  const [roadmap, setRoadmap, { dirty, reset }] = useDraft<StudentRoadmap | null>((student && studentRoadmaps[student._id]) || null, student?._id);
   const progress = roadmapProgress(roadmap);
   const recommended = student ? templates.find((t) => t.cohort === student.profession) : undefined;
 
@@ -55,18 +56,26 @@ export const Roadmaps: React.FC = () => {
 
   const saveRoadmap = (next: StudentRoadmap | null, auditAction?: string, auditTarget?: string) => {
     if (!student) return;
+    const stamped = next && { ...next, updatedAt: new Date().toISOString() };
     setStudentRoadmaps((prev) => {
       const copy = { ...prev };
-      if (next) copy[student._id] = { ...next, updatedAt: new Date().toISOString() };
+      if (stamped) copy[student._id] = stamped;
       else delete copy[student._id];
       return copy;
     });
+    setRoadmap(stamped);
     if (auditAction) addAudit('Roadmaps', auditAction, auditTarget || student.name);
   };
 
-  const updateMilestone = (id: string, patch: Partial<Milestone>, audit?: string) => {
+  const saveEdits = () => {
+    if (!roadmap || !student) return;
+    saveRoadmap(roadmap, 'Updated student roadmap');
+    toast(`Roadmap saved for ${student.name}.`);
+  };
+
+  const updateMilestone = (id: string, patch: Partial<Milestone>) => {
     if (!roadmap) return;
-    saveRoadmap({ ...roadmap, milestones: roadmap.milestones.map((m) => (m.id === id ? { ...m, ...patch } : m)) }, audit, audit ? `${student?.name}: ${roadmap.milestones.find((m) => m.id === id)?.title}` : undefined);
+    setRoadmap({ ...roadmap, milestones: roadmap.milestones.map((m) => (m.id === id ? { ...m, ...patch } : m)) });
   };
 
   const move = (idx: number, dir: -1 | 1) => {
@@ -75,7 +84,7 @@ export const Roadmaps: React.FC = () => {
     const j = idx + dir;
     if (j < 0 || j >= ms.length) return;
     [ms[idx], ms[j]] = [ms[j], ms[idx]];
-    saveRoadmap({ ...roadmap, milestones: ms });
+    setRoadmap({ ...roadmap, milestones: ms });
   };
 
   const fromTemplate = (tplId: string | null): StudentRoadmap | null => {
@@ -151,6 +160,7 @@ export const Roadmaps: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
+                        if (s._id !== selectedId && !confirmLeave()) return;
                         setSelectedId(s._id);
                         if (window.innerWidth < 1024) setTimeout(() => document.getElementById('mc-roadmap-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
                       }}
@@ -221,8 +231,7 @@ export const Roadmaps: React.FC = () => {
                     <Textarea
                       value={roadmap.goal}
                       rows={2}
-                      onChange={(e) => saveRoadmap({ ...roadmap, goal: e.target.value })}
-                      onBlur={() => addAudit('Roadmaps', 'Updated goal', student.name)}
+                      onChange={(e) => setRoadmap({ ...roadmap, goal: e.target.value })}
                       placeholder="e.g. Land a data analyst role in Bengaluru by March"
                     />
                   </Panel>
@@ -235,6 +244,8 @@ export const Roadmaps: React.FC = () => {
                         <Button
                           size="sm"
                           icon={Bell}
+                          disabled={dirty}
+                          title={dirty ? 'Save the roadmap first' : undefined}
                           onClick={() => {
                             notify({ title: `Roadmap updated for ${student.name}`, body: `Progress is now ${progress}%. Student notified by email.`, category: 'students', link: 'roadmaps' });
                             addAudit('Roadmaps', 'Sent roadmap update to student', student.email);
@@ -258,7 +269,7 @@ export const Roadmaps: React.FC = () => {
                             {i < roadmap.milestones.length - 1 && <span className="absolute top-8 bottom-0 w-px bg-[#DDE4EF]" style={{ left: `${Math.min(i, 6) * 6 + 14}px` }} aria-hidden />}
                             <button
                               type="button"
-                              onClick={() => updateMilestone(m.id, { status: NEXT_STATUS[m.status] }, `Marked "${STATUS_META[NEXT_STATUS[m.status]].label}"`)}
+                              onClick={() => updateMilestone(m.id, { status: NEXT_STATUS[m.status] })}
                               className={cx('relative z-[1] mt-0.5 h-[29px] w-[29px] shrink-0 rounded-[8px] border flex items-center justify-center', meta.cls)}
                               title={`${meta.label}: click to change`}
                               aria-label={`${m.title}: ${meta.label}. Click to change.`}
@@ -276,7 +287,7 @@ export const Roadmaps: React.FC = () => {
                                 <div className="flex items-center gap-1 shrink-0">
                                   <select
                                     value={m.status}
-                                    onChange={(e) => updateMilestone(m.id, { status: e.target.value as MilestoneStatus }, `Marked "${STATUS_META[e.target.value as MilestoneStatus].label}"`)}
+                                    onChange={(e) => updateMilestone(m.id, { status: e.target.value as MilestoneStatus })}
                                     className="h-8 rounded-[8px] border border-[#D3DBE8] bg-white px-2 text-[12.5px] font-medium"
                                     aria-label="Step status"
                                   >
@@ -300,7 +311,7 @@ export const Roadmaps: React.FC = () => {
                                     icon={Trash2}
                                     tone="danger"
                                     label="Remove step"
-                                    onClick={() => saveRoadmap({ ...roadmap, milestones: roadmap.milestones.filter((x) => x.id !== m.id) }, 'Removed step', `${student.name}: ${m.title}`)}
+                                    onClick={() => setRoadmap({ ...roadmap, milestones: roadmap.milestones.filter((x) => x.id !== m.id) })}
                                   />
                                 </div>
                               </div>
@@ -331,11 +342,7 @@ export const Roadmaps: React.FC = () => {
                       onSubmit={(e) => {
                         e.preventDefault();
                         if (!newMilestone.trim()) return;
-                        saveRoadmap(
-                          { ...roadmap, milestones: [...roadmap.milestones, { id: uid('ms'), title: newMilestone.trim(), status: 'todo', due: '', note: '' }] },
-                          'Added step',
-                          `${student.name}: ${newMilestone.trim()}`
-                        );
+                        setRoadmap({ ...roadmap, milestones: [...roadmap.milestones, { id: uid('ms'), title: newMilestone.trim(), status: 'todo', due: '', note: '' }] });
                         setNewMilestone('');
                       }}
                     >
@@ -491,6 +498,7 @@ export const Roadmaps: React.FC = () => {
           </div>
         )}
       </Modal>
+      <SaveBar show={dirty} message={`${student?.name || 'This student'}'s roadmap isn't saved yet`} saveLabel="Save roadmap" onSave={saveEdits} onDiscard={reset} />
     </div>
   );
 };

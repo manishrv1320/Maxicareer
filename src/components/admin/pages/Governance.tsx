@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Download, Upload, History, CheckCircle2, XCircle, Plus, ShieldCheck, Trash2, FileDown, Lock } from 'lucide-react';
 import { useAdmin, AuditEntry, NAV_GROUPS, SETTINGS_ITEM, AdminTab } from '../context';
-import { PageHeader, Panel, Button, Badge, Input, Select, Field, Segmented, SearchInput, Empty, Th, Td, Modal, Toggle, cx } from '../ui';
-import { DAY_MS, downloadCsv, formatDate, useCsvPicker, pick, uid, useSharedValue, timeAgo } from '../lib';
+import { PageHeader, Panel, Button, Badge, Input, Select, Field, Segmented, SearchInput, Empty, Th, Td, Modal, Toggle, SaveBar, cx } from '../ui';
+import { DAY_MS, downloadCsv, formatDate, useCsvPicker, pick, uid, useSharedValue, useDraft, timeAgo } from '../lib';
 
 /* ------------------------------------------------------------------ */
 /* Approvals                                                           */
@@ -365,7 +365,7 @@ export const ALL_PAGE_IDS: AdminTab[] = [...NAV_GROUPS.flatMap((g) => g.items.ma
 export const DEFAULT_ROLE_PAGES: Record<string, AdminTab[]> = {
   Counsellor: ['dashboard', 'notifications', 'students', 'sessions', 'applications', 'roadmaps', 'curriculum', 'events', 'feedback'],
   Mentor: ['dashboard', 'notifications', 'students', 'sessions', 'roadmaps', 'applications', 'curriculum', 'events', 'feedback'],
-  'Content editor': ['dashboard', 'notifications', 'web-careers', 'web-home', 'web-nav', 'web-footer', 'web-contact', 'web-cta', 'web-articles', 'web-seo', 'web-social'],
+  'Content editor': ['dashboard', 'notifications', 'web-careers', 'web-home', 'web-nav', 'web-footer', 'web-contact', 'web-cta', 'web-articles', 'web-seo', 'web-social', 'web-policies'],
   Admin: ALL_PAGE_IDS.filter((p) => p !== 'access'),
   'Global admin': ALL_PAGE_IDS,
 };
@@ -393,10 +393,10 @@ export function effectiveRolePages(stored: Record<string, string[]>): Record<str
 }
 
 export const PageAccess: React.FC = () => {
-  const { addAudit } = useAdmin();
+  const { addAudit, toast } = useAdmin();
   const [stored, setStored] = useSharedValue<Record<string, string[]>>('role_pages', DEFAULT_ROLE_PAGES);
-  const rolePages = effectiveRolePages(stored);
-  const setRolePages = (next: Record<string, string[]>) => setStored({ ...next, [KNOWN_KEY]: ALL_PAGE_IDS });
+  const savedRolePages = useMemo(() => effectiveRolePages(stored), [stored]);
+  const [rolePages, setRolePages, { dirty, reset }] = useDraft(savedRolePages);
   const roles = Object.keys(rolePages);
   const [role, setRole] = useState(roles[0] || 'Counsellor');
   const pages = rolePages[role] || [];
@@ -405,7 +405,13 @@ export const PageAccess: React.FC = () => {
   const setPage = (page: string, on: boolean) => {
     const next = on ? Array.from(new Set([...pages, page])) : pages.filter((p) => p !== page);
     setRolePages({ ...rolePages, [role]: next });
-    addAudit('Page access', on ? 'Granted page' : 'Revoked page', `${role}: ${page}`);
+  };
+
+  const save = () => {
+    const changed = roles.filter((r) => JSON.stringify([...(rolePages[r] || [])].sort()) !== JSON.stringify([...(savedRolePages[r] || [])].sort()));
+    setStored({ ...rolePages, [KNOWN_KEY]: ALL_PAGE_IDS });
+    addAudit('Page access', 'Updated page access', changed.join(', '));
+    toast('Page access saved.');
   };
 
   return (
@@ -468,6 +474,7 @@ export const PageAccess: React.FC = () => {
       <p className="text-[12.5px] text-[#7A869E] flex items-center gap-1.5">
         <ShieldCheck className="w-3.5 h-3.5" /> These settings control what the portal shows. Pair them with server-side checks before giving staff real accounts.
       </p>
+      <SaveBar show={dirty} message="Page access changes aren't saved yet" onSave={save} onDiscard={reset} />
     </div>
   );
 };

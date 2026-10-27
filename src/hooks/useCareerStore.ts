@@ -51,6 +51,9 @@ export function useCareerStore() {
     rejectCounselingRequest: reported((id: string) => s.rejectCounselingRequest(id)),
     completeSession: reported((id: string, data: Parameters<Store['completeSession']>[1]) => s.completeSession(id, data)),
     updateAppointmentStatus: reported((id: string, status: 'scheduled' | 'completed' | 'cancelled') => s.updateAppointmentStatus(id, status)),
+    // These reject on failure so the dialog can show the message inline.
+    rescheduleAppointment: (id: string, date: string, time: string) => s.rescheduleAppointment(id, date, time),
+    bookedSlots: (counselorId: string) => s.bookedSlots(counselorId),
     addRecommendation: reported((data: Parameters<Store['addRecommendation']>[0]) => s.addRecommendation(data)),
     updateRecommendationStatus: reported((id: string, status: Parameters<Store['updateRecommendationStatus']>[1]) => s.updateRecommendationStatus(id, status)),
     addFollowUpTask: reported((data: Parameters<Store['addFollowUpTask']>[0]) => s.addFollowUpTask(data)),

@@ -31,9 +31,18 @@ import {
   Wallet,
   Receipt,
   BriefcaseBusiness,
+  Newspaper,
+  ScrollText,
 } from 'lucide-react';
 import { DbStudent, MongoStats } from '../../types';
 import type { PlatformState } from '../../services/careerPlatformStore';
+
+/** A student login made by an admin; `password` is only there if it couldn't be emailed. */
+export interface StudentLogin {
+  created: boolean;
+  emailed?: boolean;
+  password?: string;
+}
 
 export interface AdminSession {
   email: string;
@@ -64,6 +73,7 @@ export type AdminTab =
   | 'payments'
   | 'expenditure'
   | 'web-careers'
+  | 'newsletter'
   | 'web-home'
   | 'web-nav'
   | 'web-footer'
@@ -72,6 +82,7 @@ export type AdminTab =
   | 'web-articles'
   | 'web-seo'
   | 'web-social'
+  | 'web-policies'
   | 'approvals'
   | 'audit'
   | 'access'
@@ -136,6 +147,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Website',
     items: [
       { id: 'web-careers', label: 'Career page', icon: BriefcaseBusiness },
+      { id: 'newsletter', label: 'Newsletter', icon: Newspaper },
       { id: 'web-home', label: 'Homepage', icon: Home },
       { id: 'web-nav', label: 'Navigation', icon: Menu },
       { id: 'web-footer', label: 'Footer', icon: PanelBottom },
@@ -144,6 +156,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'web-articles', label: 'Article covers', icon: ImageIcon },
       { id: 'web-seo', label: 'SEO', icon: Search },
       { id: 'web-social', label: 'Social links', icon: Share2 },
+      { id: 'web-policies', label: 'Policies', icon: ScrollText },
     ],
   },
   {
@@ -322,7 +335,8 @@ export interface AdminContextValue {
   refreshStudents: (showIndicator?: boolean) => Promise<void>;
   patchStudent: (id: string, patch: Partial<DbStudent>) => Promise<void>;
   deleteStudent: (id: string) => Promise<void>;
-  createStudent: (data: Record<string, unknown>) => Promise<DbStudent | null>;
+  /** Pass `createLogin: true` to also give them a login with an emailed one-time password. */
+  createStudent: (data: Record<string, unknown>) => Promise<{ student: DbStudent; login?: StudentLogin } | null>;
   openStudent: (s: DbStudent) => void;
 
   notifications: AppNotification[];

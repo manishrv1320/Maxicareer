@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Plus, Download, Check, X, Printer, Pencil, Trash2, Receipt, Wallet, Undo2, Settings2, Timer } from 'lucide-react';
 import { useAdmin } from '../context';
-import { PageHeader, Panel, Stat, Badge, Button, IconButton, Empty, Segmented, Modal, Field, Input, Select, Textarea, SearchInput, Th, Td, cx, Tone } from '../ui';
-import { useSharedCollection, useSharedValue, uid, formatDate, downloadCsv, inr, plural } from '../lib';
+import { PageHeader, Panel, Stat, Badge, Button, IconButton, Empty, Segmented, Modal, Field, Input, Select, Textarea, SearchInput, SaveBar, Th, Td, cx, Tone } from '../ui';
+import { useSharedCollection, useSharedValue, useDraft, uid, formatDate, downloadCsv, inr, plural } from '../lib';
 import type { Invoice, InvoiceLine, InvoiceStatus, Payout, Expense, WorkLog, RenewalOption } from '../../../types/portal';
 import type { UploadedFile } from '../../../lib/api';
 import { FileLink, FilePicker, isoOf, minutesOf } from '../../workspace/kit';
@@ -349,8 +349,17 @@ export const Payments: React.FC = () => {
   const [invoices, setInvoices] = useSharedCollection<Invoice>('invoices', [], { refreshMs: 30_000 });
   const [payouts, setPayouts] = useSharedCollection<Payout>('payouts', []);
   const [worklogs] = useSharedCollection<WorkLog>('worklogs', []);
-  const [renewalOptions, setRenewalOptions] = useSharedValue<RenewalOption[]>('renewal_options', DEFAULT_RENEWAL_OPTIONS);
-  const [instructions, setInstructions] = useSharedValue<string>('payment_instructions', DEFAULT_PAYMENT_INSTRUCTIONS);
+  const [savedRenewalOptions, saveRenewalOptions] = useSharedValue<RenewalOption[]>('renewal_options', DEFAULT_RENEWAL_OPTIONS);
+  const [savedInstructions, saveInstructions] = useSharedValue<string>('payment_instructions', DEFAULT_PAYMENT_INSTRUCTIONS);
+  const [renewalOptions, setRenewalOptions, renewalDraft] = useDraft(savedRenewalOptions);
+  const [instructions, setInstructions, instructionsDraft] = useDraft(savedInstructions);
+  const settingsDirty = renewalDraft.dirty || instructionsDraft.dirty;
+  const saveSettings = () => {
+    if (renewalDraft.dirty) saveRenewalOptions(renewalOptions);
+    if (instructionsDraft.dirty) saveInstructions(instructions);
+    addAudit('Payments', 'Updated renewal and payment settings', [renewalDraft.dirty && 'Renewal options', instructionsDraft.dirty && 'Payment instructions'].filter(Boolean).join(', '));
+    toast('Renewal and payment settings saved.');
+  };
   const [tab, setTab] = useState<'invoices' | 'payouts' | 'settings'>('invoices');
   const [filter, setFilter] = useState<'all' | InvoiceStatus>('all');
   const [q, setQ] = useState('');
@@ -628,12 +637,12 @@ export const Payments: React.FC = () => {
             <Button size="sm" className="mt-3" icon={Plus} onClick={() => setRenewalOptions([...renewalOptions, { id: uid('renew'), label: '3 months', months: 3, percent: 30 }])}>
               Add option
             </Button>
-            <p className="mt-3 text-[12.5px] text-[#7A869E]">Example: a ₹15,999 program with 90% for 12 months renews at {inr(Math.round(15999 * 0.9))}. Changes save automatically.</p>
+            <p className="mt-3 text-[12.5px] text-[#7A869E]">Example: a ₹15,999 program with 90% for 12 months renews at {inr(Math.round(15999 * 0.9))}.</p>
           </Panel>
           <Panel title="Payment instructions" description="Shown to students when they open an unpaid invoice.">
             <Textarea rows={6} value={instructions} onChange={(e) => setInstructions(e.target.value)} />
             <p className="mt-2 text-[12.5px] text-[#7A869E] flex items-center gap-1.5">
-              <Settings2 className="w-3.5 h-3.5" /> Add your UPI ID or bank details here. Changes save automatically.
+              <Settings2 className="w-3.5 h-3.5" /> Add your UPI ID or bank details here.
             </p>
           </Panel>
         </div>
@@ -668,6 +677,15 @@ export const Payments: React.FC = () => {
           addAudit('Payments', exists ? 'Edited payout' : 'Created payout', `${p.providerName} · ${inr(p.amount)}`);
           toast(exists ? 'Payout updated.' : `Payout recorded. ${p.providerName} can see it in their workspace.`);
           setPayout(null);
+        }}
+      />
+      <SaveBar
+        show={settingsDirty}
+        message="Renewal and payment settings aren't saved yet"
+        onSave={saveSettings}
+        onDiscard={() => {
+          renewalDraft.reset();
+          instructionsDraft.reset();
         }}
       />
     </div>

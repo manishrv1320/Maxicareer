@@ -14,36 +14,7 @@ import {
 import { Counselor } from '../../types/counselor';
 import { useCareerStore } from '../../hooks/useCareerStore';
 import { StudentProfile } from '../../types';
-
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const pad = (n: number) => String(n).padStart(2, '0');
-const isoDay = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const localDate = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, (m || 1) - 1, d || 1);
-};
-
-/** Why a day can't be booked with this person, or null when it can. */
-function unavailableReason(c: Counselor, iso: string) {
-  if (!iso) return 'Please choose a preferred date for the session.';
-  if (iso < isoDay(new Date())) return 'Please choose a date from today onwards.';
-  if (c.blockedDates?.includes(iso)) return `${c.name.split(' ')[0]} is away on that day. Please pick another date.`;
-  const day = WEEKDAYS[localDate(iso).getDay()];
-  if (c.availabilityDays.length && !c.availabilityDays.includes(day)) return `${c.name.split(' ')[0]} takes sessions on ${c.availabilityDays.join(', ')}.`;
-  return null;
-}
-
-/** The next few days this person takes sessions. */
-function nextOpenDays(c: Counselor, count = 6) {
-  const out: string[] = [];
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  for (let i = 0; i < 60 && out.length < count; i++, d.setDate(d.getDate() + 1)) {
-    const iso = isoDay(d);
-    if (!unavailableReason(c, iso)) out.push(iso);
-  }
-  return out;
-}
+import { BookedSlot, bookedAt, isoDay, localDate, longDay, nextOpenDays, unavailableReason } from '../../lib/slots';
 
 interface CounselorDirectoryModalProps {
   isOpen: boolean;
@@ -51,6 +22,8 @@ interface CounselorDirectoryModalProps {
   currentUser?: StudentProfile | null;
   studentProfile?: StudentProfile | null;
   initialCounselorId?: string;
+  /** Only these counsellors/mentors can be booked (a student's assigned mentor and counsellor). */
+  allowedIds?: string[];
   onBookSuccess?: (app: any) => void;
 }
 
@@ -60,12 +33,13 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
   currentUser,
   studentProfile,
   initialCounselorId,
+  allowedIds,
   onBookSuccess,
 }) => {
   const activeUser = currentUser || studentProfile;
-  const { state, createCounselingRequest } = useCareerStore();
+  const { state, createCounselingRequest, bookedSlots } = useCareerStore();
   // Industry mentors are bookable too; present them with the same card fields.
-  const approvedCounselors: Counselor[] = [
+  const bookable: Counselor[] = [
     ...state.counselors.filter((c) => c.approvalStatus === 'approved'),
     ...state.mentors
       .filter((m) => m.approvalStatus === 'approved')
@@ -89,6 +63,8 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
         blockedDates: m.blockedDates,
       })),
   ];
+  const approvedCounselors = allowedIds ? bookable.filter((c) => allowedIds.includes(c.id)) : bookable;
+  const restricted = Boolean(allowedIds);
 
   const [selectedCounselor, setSelectedCounselor] = useState<Counselor | null>(null);
   const [isBookingStep, setIsBookingStep] = useState(false);
@@ -108,6 +84,27 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
   const [studentPhone, setStudentPhone] = useState(activeUser?.phone || '+91 ');
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Times other students already have with this person: shown as "Booked" and not selectable.
+  const [booked, setBooked] = useState<BookedSlot[]>([]);
+  React.useEffect(() => {
+    setBooked([]);
+    if (!selectedCounselor) return;
+    let live = true;
+    bookedSlots(selectedCounselor.id)
+      .then((list) => live && setBooked(list))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCounselor?.id, isOpen]);
+  const freeSlot = (c: Counselor, iso: string) => c.availableTimeSlots.find((t) => !bookedAt(booked, iso, t)) || '';
+
+  // Keep the chosen time on a free slot when the day changes or bookings load.
+  React.useEffect(() => {
+    if (selectedCounselor && selectedDate && selectedTime && bookedAt(booked, selectedDate, selectedTime)) setSelectedTime(freeSlot(selectedCounselor, selectedDate));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booked, selectedDate]);
 
   // Sync initial counselor or current user
   React.useEffect(() => {
@@ -187,7 +184,7 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
       setFormError(dateProblem);
       return;
     }
-    if (!selectedTime) {
+    if (!selectedTime || bookedAt(booked, selectedDate, selectedTime)) {
       setFormError('Please choose an available time slot.');
       return;
     }
@@ -204,11 +201,7 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
         counselorName: selectedCounselor.name,
         topic: topicNotes.trim() || `${counselingType} Consultation`,
         counselingType,
-        preferredDate: localDate(selectedDate).toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
-        }),
+        preferredDate: longDay(selectedDate),
         preferredTime: selectedTime,
         notes: topicNotes.trim(),
       });
@@ -253,11 +246,15 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
                   ? 'Counseling Request Submitted'
                   : isBookingStep
                   ? `Book Session with ${selectedCounselor?.name}`
+                  : restricted
+                  ? 'Your mentor and counsellor'
                   : 'Maxicareer Certified Career Counselors'}
               </h2>
               <p className="text-xs text-slate-400">
                 {isBookingStep
                   ? 'Personalized 1-on-1 strategy & roadmap advisory'
+                  : restricted
+                  ? 'Book a 1-on-1 session with the people assigned to you'
                   : 'Accredited guidance specialists for school, college & professional tracks'}
               </p>
             </div>
@@ -326,7 +323,7 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
                   onClick={() => setIsBookingStep(false)}
                   className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 cursor-pointer"
                 >
-                  &larr; Back to Counselor Directory
+                  &larr; {restricted ? 'Back' : 'Back to Counselor Directory'}
                 </button>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500">Session Duration:</span>
@@ -428,21 +425,32 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
                       3. Available Time Slot
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      {selectedCounselor.availableTimeSlots.map((slot) => (
-                        <button
-                          key={slot}
-                          type="button"
-                          onClick={() => setSelectedTime(slot)}
-                          className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                            selectedTime === slot
-                              ? 'bg-blue-600 border-blue-600 text-white'
-                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                          }`}
-                        >
-                          {slot}
-                        </button>
-                      ))}
+                      {selectedCounselor.availableTimeSlots.map((slot) => {
+                        const taken = bookedAt(booked, selectedDate, slot);
+                        return (
+                          <button
+                            key={slot}
+                            type="button"
+                            disabled={!!taken}
+                            onClick={() => setSelectedTime(slot)}
+                            title={taken ? (taken.mine ? 'You already booked this time' : 'Someone already booked this time') : undefined}
+                            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                              taken
+                                ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                : selectedTime === slot
+                                ? 'bg-blue-600 border-blue-600 text-white cursor-pointer'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer'
+                            }`}
+                          >
+                            <span className={taken ? 'line-through' : ''}>{slot}</span>
+                            {taken && <span className="ml-1.5 no-underline">{taken.mine ? 'Yours' : 'Booked'}</span>}
+                          </button>
+                        );
+                      })}
                     </div>
+                    {selectedDate && selectedCounselor.availableTimeSlots.length > 0 && !freeSlot(selectedCounselor, selectedDate) && (
+                      <p className="text-[11px] font-semibold text-amber-700 mt-1.5">Every slot on this day is booked. Please pick another date.</p>
+                    )}
                   </div>
                 </div>
 
@@ -531,7 +539,8 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
           ) : (
             /* COUNSELOR DIRECTORY LIST */
             <div className="space-y-6">
-              {/* Filter and Search Bar */}
+              {/* Filter and Search Bar (not needed for a student's own mentor and counsellor) */}
+              {!restricted && (
               <div className="flex flex-col sm:flex-row gap-3 items-center justify-between pb-4 border-b border-slate-100">
                 <div className="relative w-full sm:w-72">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -561,6 +570,7 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
                   </div>
                 )}
               </div>
+              )}
 
               {/* Counselor Cards or Empty State */}
               {filteredCounselors.length === 0 ? (
@@ -569,10 +579,12 @@ export const CounselorDirectoryModal: React.FC<CounselorDirectoryModalProps> = (
                     <User className="w-7 h-7" />
                   </div>
                   <h3 className="text-base font-bold text-slate-900">
-                    No counselors are currently available.
+                    {restricted ? "Your mentor and counsellor aren't assigned yet." : 'No counselors are currently available.'}
                   </h3>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    {approvedCounselors.length === 0
+                    {restricted
+                      ? 'The Maxicareer team assigns them after your enrolment is confirmed. You can then book sessions with them here.'
+                      : approvedCounselors.length === 0
                       ? 'No accredited counselors have registered and been approved yet in this environment. Career guidance specialists can register via the Maxicareer Internal Portal.'
                       : 'No counselors matched your search criteria. Try removing some filters.'}
                   </p>

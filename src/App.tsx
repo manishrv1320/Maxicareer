@@ -137,7 +137,6 @@ export default function App() {
         <StudentDashboard
           profile={userProfile}
           onLogout={handleLogout}
-          onReturnToSite={() => setCurrentView('landing')}
           onSwitchProfile={handleSwitchProfile}
         />
       </div>

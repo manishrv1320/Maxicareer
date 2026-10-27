@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
+import { Check, Copy, X } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
 /* Design tokens                                                       */
@@ -413,6 +413,41 @@ export const Modal: React.FC<{
   );
 };
 
+/**
+ * A one-time password that couldn't be emailed, shown once so the admin can share it another
+ * way. The person chooses their own password when they sign in with it.
+ */
+export const OneTimePasswordModal: React.FC<{ issued: { email: string; password: string } | null; onClose: () => void }> = ({ issued, onClose }) => {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => setCopied(false), [issued?.password]);
+  return (
+    <Modal
+      open={!!issued}
+      onClose={onClose}
+      title="One-time password"
+      description={issued ? `We couldn't email it to ${issued.email}, so share it with them securely. It's shown only once; they choose their own password when they sign in.` : ''}
+      footer={
+        <Button variant="primary" onClick={onClose}>
+          Done
+        </Button>
+      }
+    >
+      <div className="flex items-center gap-2">
+        <div className="mc-num flex-1 rounded-[10px] bg-[#0D1B3E] text-white text-[18px] tracking-wider px-4 py-3 select-all">{issued?.password}</div>
+        <Button
+          icon={copied ? Check : Copy}
+          onClick={() => {
+            navigator.clipboard?.writeText(issued?.password || '');
+            setCopied(true);
+          }}
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </Button>
+      </div>
+    </Modal>
+  );
+};
+
 export const Drawer: React.FC<{
   open: boolean;
   onClose: () => void;
@@ -451,6 +486,52 @@ export const Drawer: React.FC<{
     </AnimatePresence>
   );
 };
+
+/* ------------------------------------------------------------------ */
+/* Unsaved changes                                                     */
+/* ------------------------------------------------------------------ */
+
+/** Floating bar shown while a form has edits that haven't been saved. */
+export const SaveBar: React.FC<{
+  show: boolean;
+  onSave: () => void;
+  onDiscard: () => void;
+  message?: string;
+  saveLabel?: string;
+}> = ({ show, onSave, onDiscard, message = 'You have unsaved changes', saveLabel = 'Save changes' }) => (
+  <AnimatePresence>
+    {show && (
+      <div className="fixed inset-x-0 bottom-5 z-[65] flex justify-center px-4 pointer-events-none">
+        <motion.div
+          role="region"
+          aria-label="Unsaved changes"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16 }}
+          transition={{ duration: 0.18 }}
+          className="mc-admin pointer-events-auto flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[14px] bg-[#0D1B3E] text-white pl-4 pr-2 py-2 shadow-[0_16px_40px_-12px_rgba(13,27,62,0.45)]"
+        >
+          <span className="flex items-center gap-2 text-[13.5px] font-medium">
+            <span className="h-2 w-2 rounded-full bg-[#F2A93B]" aria-hidden />
+            {message}
+          </span>
+          <span className="flex gap-1.5 ml-auto">
+            <button
+              type="button"
+              onClick={onDiscard}
+              className="h-10 px-3 rounded-[10px] text-[13.5px] font-semibold text-[#C3D0EA] hover:text-white hover:bg-white/10"
+            >
+              Discard
+            </button>
+            <Button variant="primary" onClick={onSave}>
+              {saveLabel}
+            </Button>
+          </span>
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
+);
 
 /* ------------------------------------------------------------------ */
 /* Table helpers                                                       */
